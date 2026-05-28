@@ -259,7 +259,7 @@ function StatCard({ value, label }) {
   const match = value.match(/^(\d+)(.*)$/);
   const { count, ref } = useCountUp(match ? Number(match[1]) : 0);
   return (
-    <div ref={ref} className="glass-card p-4 fade-in-up">
+    <div ref={ref} className="glass-card p-4 fade-in-up text-center">
       <div className="text-2xl font-bold gold-text">
         {match ? `${count}${match[2]}` : value}
       </div>
@@ -268,65 +268,170 @@ function StatCard({ value, label }) {
   );
 }
 
+const PREVIEW_MSGS = [
+  {
+    role: "user",
+    text: "¿Qué documentos necesito para exportar por primera vez?",
+  },
+  {
+    role: "bot",
+    text: "Para tu primera exportación necesitás:\n- **DJVE** ante AFIP\n- **Factura comercial** en inglés\n- **Packing list** detallado\n- **Certificado de origen** (si aplica)",
+  },
+  { role: "user", text: "¿Cuánto tarda el despacho?" },
+];
+
+function ChatPreview() {
+  return (
+    <div className="glass-card p-5 max-w-sm mx-auto lg:mx-0">
+      <div className="flex items-center gap-3 pb-4 border-b border-white/10 mb-4">
+        <div
+          className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-xs flex-shrink-0"
+          style={{ color: "#0a1628" }}
+        >
+          CE
+        </div>
+        <div>
+          <div className="text-white text-sm font-semibold">ConExporta AI</div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-green-400 text-xs">En línea · Gemini AI</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {PREVIEW_MSGS.map((m, i) => (
+          <div
+            key={i}
+            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            style={{ animation: `fadeInUp 0.4s ease ${i * 0.25 + 0.2}s both` }}
+          >
+            <div
+              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                m.role === "user"
+                  ? "bg-yellow-400 font-medium"
+                  : "bg-white/10 text-slate-200"
+              }`}
+              style={m.role === "user" ? { color: "#0a1628" } : {}}
+            >
+              {m.text.split("\n").map((line, j) => {
+                if (line.startsWith("- ")) {
+                  const parts = line.slice(2).split(/\*\*(.+?)\*\*/g);
+                  return (
+                    <div key={j} className="flex gap-1">
+                      <span className="text-yellow-400 flex-shrink-0">•</span>
+                      <span>
+                        {parts.map((p, k) =>
+                          k % 2 === 1 ? <strong key={k}>{p}</strong> : p,
+                        )}
+                      </span>
+                    </div>
+                  );
+                }
+                if (line === "") return <div key={j} className="h-1" />;
+                const parts = line.split(/\*\*(.+?)\*\*/g);
+                return (
+                  <div key={j}>
+                    {parts.map((p, k) =>
+                      k % 2 === 1 ? <strong key={k}>{p}</strong> : p,
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-start">
+          <div className="bg-white/10 rounded-2xl px-4 py-3 flex gap-1.5 items-center">
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Hero() {
   const stats = [
     { value: "24/7", label: "Disponible" },
-    { value: "3 min", label: "Tiempo respuesta" },
+    { value: "3 min", label: "Resp. promedio" },
     { value: "100%", label: "Gratuito" },
     { value: "ARG", label: "Especializado" },
   ];
   const { display: twDisplay } = useTypewriter(ROTATE_WORDS);
 
   return (
-    <section className="hero-gradient min-h-dvh flex flex-col items-center justify-center text-center px-4 pt-16">
-      <div className="max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <span className="text-yellow-400 text-sm font-medium">
-            ✦ Consultorio de Comercio Exterior · UTN Rosario
-          </span>
-        </div>
+    <section className="hero-gradient min-h-dvh flex flex-col justify-center px-4 pt-20 pb-12 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="hero-dot-grid" />
+      <div className="hero-glow hero-glow-1" />
+      <div className="hero-glow hero-glow-2" />
 
-        <h1 className="text-4xl sm:text-6xl font-extrabold text-white mb-4 leading-tight">
-          Tu consultor de <span className="gold-text">comercio exterior</span>
-          <br />
-          disponible siempre
-        </h1>
+      <div className="max-w-6xl mx-auto w-full relative z-10">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left: text + CTAs */}
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-yellow-400 text-sm font-medium">
+                ✦ Consultorio de Comercio Exterior · UTN Rosario
+              </span>
+            </div>
 
-        <p className="text-slate-300 text-lg sm:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
-          Resolvé tus dudas sobre{" "}
-          <span className="text-yellow-400 font-semibold">{twDisplay}</span>
-          <span className="typewriter-cursor" /> desde Argentina — al instante.
-        </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight">
+              Tu consultor de{" "}
+              <span className="gold-text">comercio exterior</span>
+              <br />
+              disponible siempre
+            </h1>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-          <a
-            href="#chatbot"
-            className="btn-gold px-8 py-3 rounded-xl text-base"
-          >
-            Hacer una consulta
-          </a>
-          <a
-            href="#calculadora"
-            className="px-8 py-3 rounded-xl text-base border border-yellow-400/40 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
-          >
-            Calcular envío
-          </a>
-        </div>
+            <p className="text-slate-300 text-lg mb-8 max-w-lg leading-relaxed mx-auto lg:mx-0">
+              Resolvé tus dudas sobre{" "}
+              <span className="text-yellow-400 font-semibold">{twDisplay}</span>
+              <span className="typewriter-cursor" /> desde Argentina — al
+              instante.
+            </p>
 
-        <p className="text-slate-500 text-sm mb-10">
-          +200 consultas respondidas · Documentación aduanera · Incoterms 2020
-        </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-3">
+              <a
+                href="#chatbot"
+                className="btn-gold px-8 py-3 rounded-xl text-base"
+              >
+                Hacer una consulta
+              </a>
+              <a
+                href="#calculadora"
+                className="px-8 py-3 rounded-xl text-base border border-yellow-400/40 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+              >
+                Calcular envío
+              </a>
+            </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          {stats.map((s) => (
-            <StatCard key={s.label} value={s.value} label={s.label} />
-          ))}
+            <p className="text-slate-500 text-sm mb-8 text-center lg:text-left">
+              +200 consultas respondidas · Documentación aduanera · Incoterms
+              2020
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {stats.map((s) => (
+                <StatCard key={s.label} value={s.value} label={s.label} />
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Chat preview */}
+          <div className="hidden lg:block">
+            <ChatPreview />
+          </div>
         </div>
       </div>
 
-      <a href="#chatbot" className="mt-16 text-slate-500 animate-bounce">
+      <a
+        href="#chatbot"
+        className="mt-12 text-slate-500 animate-bounce mx-auto relative z-10"
+      >
         <ChevronDown size={28} />
       </a>
     </section>
@@ -337,29 +442,32 @@ function Hero() {
 
 function FeaturesBar() {
   const features = [
-    { icon: <FileText size={18} />, label: "Documentación aduanera" },
-    { icon: <Globe size={18} />, label: "Incoterms 2020" },
-    { icon: <Anchor size={18} />, label: "Rutas logísticas" },
-    { icon: <Package size={18} />, label: "Embalaje internacional" },
-    { icon: <Building2 size={18} />, label: "AFIP · SENASA · INAL" },
-    { icon: <FileText size={18} />, label: "Posiciones NCM/HS" },
+    { icon: <FileText size={15} />, label: "Documentación aduanera" },
+    { icon: <Globe size={15} />, label: "Incoterms 2020" },
+    { icon: <Anchor size={15} />, label: "Rutas logísticas" },
+    { icon: <Package size={15} />, label: "Embalaje internacional" },
+    { icon: <Building2 size={15} />, label: "AFIP · SENASA · INAL" },
+    { icon: <FileText size={15} />, label: "Posiciones NCM/HS" },
+    { icon: <Plane size={15} />, label: "Logística aérea" },
+    { icon: <Truck size={15} />, label: "Transporte terrestre" },
   ];
+  const items = [...features, ...features];
 
   return (
-    <section className="bg-yellow-400 py-4 overflow-hidden">
-      <div className="flex gap-8 items-center justify-center flex-wrap px-4">
-        {features.map((f) => (
+    <div className="bg-yellow-400/8 border-y border-yellow-400/15 py-3 overflow-hidden backdrop-blur-sm">
+      <div className="marquee-track gap-10 items-center">
+        {items.map((f, i) => (
           <div
-            key={f.label}
-            className="flex items-center gap-2 text-navy-900 font-semibold text-sm whitespace-nowrap"
-            style={{ color: "#0a1628" }}
+            key={i}
+            className="flex items-center gap-2 text-yellow-300 font-medium text-sm whitespace-nowrap flex-shrink-0"
           >
-            {f.icon}
+            <span className="text-yellow-400">{f.icon}</span>
             {f.label}
+            <span className="ml-6 text-yellow-400/25">✦</span>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 

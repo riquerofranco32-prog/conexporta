@@ -110,6 +110,15 @@ export async function POST(request) {
     console.error("[chat] Error interno:", error);
 
     const status = error?.status || error?.httpStatus;
+    if (status === 429) {
+      return Response.json(
+        {
+          error:
+            "Límite de consultas alcanzado (plan gratuito). Esperá unos segundos e intentá de nuevo.",
+        },
+        { status: 429 },
+      );
+    }
     if (status) {
       const msg = (error?.message || "").slice(0, 200);
       return Response.json(

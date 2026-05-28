@@ -17,7 +17,7 @@
 }
 
 html {
-  /* scroll-behavior se activa via JS después del mount para evitar restauración de posición */
+  /* scroll-behavior activado via JS después del mount */
 }
 html.smooth-scroll {
   scroll-behavior: smooth;
@@ -42,7 +42,129 @@ body {
   border-radius: 3px;
 }
 
-/* Typing indicator */
+/* ── Hero background ───────────────────────────────────────────────────────── */
+
+.hero-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--navy-900) 0%,
+    var(--navy-800) 60%,
+    #0d1c3a 100%
+  );
+}
+
+.hero-dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    rgba(245, 200, 66, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 36px 36px;
+  pointer-events: none;
+}
+
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+}
+.hero-glow-1 {
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(
+    circle,
+    rgba(245, 200, 66, 0.1) 0%,
+    transparent 70%
+  );
+  top: -120px;
+  right: -140px;
+}
+.hero-glow-2 {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(
+    circle,
+    rgba(26, 58, 107, 0.9) 0%,
+    transparent 70%
+  );
+  bottom: 0;
+  left: -100px;
+}
+
+/* ── Glassmorphism card ────────────────────────────────────────────────────── */
+
+.glass-card {
+  background: rgba(15, 32, 68, 0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(245, 200, 66, 0.15);
+  border-radius: 16px;
+  position: relative;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 200, 66, 0.25) 0%,
+    transparent 50%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass-card:hover {
+  border-color: rgba(245, 200, 66, 0.35);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(245, 200, 66, 0.1);
+}
+
+/* ── Gold gradient text ────────────────────────────────────────────────────── */
+
+.gold-text {
+  background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Navbar ────────────────────────────────────────────────────────────────── */
+
+.navbar-scrolled {
+  background: rgba(10, 22, 40, 0.92);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(245, 200, 66, 0.12);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
+  color: var(--navy-900);
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.btn-gold:hover {
+  box-shadow: 0 0 28px rgba(245, 200, 66, 0.45);
+  transform: scale(1.02) translateY(-1px);
+}
+
+/* ── Typing indicator ──────────────────────────────────────────────────────── */
+
 @keyframes bounce {
   0%,
   80%,
@@ -68,45 +190,12 @@ body {
   animation-delay: 0.4s;
 }
 
-/* Glassmorphism card */
-.glass-card {
-  background: rgba(15, 32, 68, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(245, 200, 66, 0.15);
-  border-radius: 16px;
-}
+/* ── Chat bubble ───────────────────────────────────────────────────────────── */
 
-/* Gold gradient text */
-.gold-text {
-  background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Hero gradient overlay */
-.hero-gradient {
-  background: linear-gradient(
-    135deg,
-    var(--navy-900) 0%,
-    var(--navy-800) 50%,
-    var(--navy-700) 100%
-  );
-}
-
-/* Navbar scroll shadow */
-.navbar-scrolled {
-  background: rgba(10, 22, 40, 0.95);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid rgba(245, 200, 66, 0.15);
-}
-
-/* Chat bubble animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -117,35 +206,44 @@ body {
   animation: fadeInUp 0.25s ease-out;
 }
 
-/* Button hover glow */
-.btn-gold {
-  background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
-  color: var(--navy-900);
-  font-weight: 700;
-  transition: all 0.2s ease;
+/* ── FeaturesBar marquee ───────────────────────────────────────────────────── */
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
-.btn-gold:hover {
-  box-shadow: 0 0 20px rgba(245, 200, 66, 0.4);
-  transform: translateY(-1px);
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
 }
 
-/* Section divider */
+/* ── Section divider ───────────────────────────────────────────────────────── */
+
 .section-divider {
   border: none;
   height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(245, 200, 66, 0.3),
+    rgba(245, 200, 66, 0.2),
     transparent
   );
   margin: 0;
 }
 
-/* Fade-in-up scroll reveal */
+/* ── Scroll reveal ─────────────────────────────────────────────────────────── */
+
 .fade-in-up {
   opacity: 0;
-  transform: translateY(32px);
+  transform: translateY(28px);
   transition:
     opacity 0.6s ease,
     transform 0.6s ease;
@@ -155,36 +253,28 @@ body {
   transform: translateY(0);
 }
 
-/* Badge pulse */
+/* ── Badge pulse ───────────────────────────────────────────────────────────── */
+
 @keyframes badgePulse {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.7;
   }
 }
 .badge-pulse {
-  animation: badgePulse 2.5s ease-in-out infinite;
+  animation: badgePulse 3s ease-in-out infinite;
 }
 
-/* Card hover */
-.glass-card {
-  transition:
-    border-color 0.25s ease,
-    transform 0.25s ease;
-}
-.glass-card:hover {
-  border-color: rgba(245, 200, 66, 0.35);
-}
+/* ── Typewriter cursor ─────────────────────────────────────────────────────── */
 
-/* Typewriter cursor */
 .typewriter-cursor {
   display: inline-block;
   width: 2px;
   height: 1em;
-  background: #f5c842;
+  background: var(--gold-400);
   margin-left: 2px;
   vertical-align: text-bottom;
   animation: blink 0.8s step-end infinite;
