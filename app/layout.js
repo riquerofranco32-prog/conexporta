@@ -15,7 +15,11 @@ export default function RootLayout({ children }) {
         {/* Deshabilita la restauración de scroll del browser antes de React */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "history.scrollRestoration='manual';window.scrollTo(0,0);",
+            __html:
+              "if('scrollRestoration'in history){history.scrollRestoration='manual';}" +
+              "window.scrollTo(0,0);" +
+              "document.addEventListener('DOMContentLoaded',function(){window.scrollTo(0,0);},{once:true});" +
+              "window.addEventListener('load',function(){window.scrollTo(0,0);},{once:true});",
           }}
         />
       </head>
