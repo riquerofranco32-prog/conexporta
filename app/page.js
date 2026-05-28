@@ -335,7 +335,8 @@ function Chatbot() {
             Asistente de <span className="gold-text">Comercio Exterior</span>
           </h2>
           <p className="text-slate-400">
-            Powered by Grok · xAI — Especializado en operaciones argentinas
+            Powered by Claude · Anthropic — Especializado en operaciones
+            argentinas
           </p>
         </div>
 
@@ -356,7 +357,7 @@ function Chatbot() {
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-green-400 text-xs">
-                    En línea · Grok AI
+                    En línea · Claude AI
                   </span>
                 </div>
               </div>
@@ -604,7 +605,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
           </h2>
           <p className="text-slate-400">
             Estimaciones orientativas de flete, seguro y tiempos de tránsito —
-            powered by Grok AI
+            powered by Claude AI
           </p>
         </div>
 
@@ -725,7 +726,10 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
               {/* Peso volumétrico calculado */}
               {pesoVolumetrico !== null && (
                 <div className="mt-2 flex items-start gap-2 bg-yellow-400/5 border border-yellow-400/20 rounded-lg px-3 py-2">
-                  <Info size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <Info
+                    size={14}
+                    className="text-yellow-400 mt-0.5 flex-shrink-0"
+                  />
                   <div className="text-xs text-slate-300 leading-relaxed">
                     <span className="font-medium text-yellow-400">
                       Peso volumétrico: {pesoVolumetrico} kg
@@ -737,7 +741,11 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                         <span className="font-medium text-white">
                           {pesoFacturable} kg
                         </span>{" "}
-                        ({pesoFacturable === pesoVolumetrico ? "volumétrico" : "real"})
+                        (
+                        {pesoFacturable === pesoVolumetrico
+                          ? "volumétrico"
+                          : "real"}
+                        )
                       </span>
                     )}
                   </div>
@@ -748,7 +756,10 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
             {/* Error — justo arriba del botón */}
             {error && (
               <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
-                <AlertTriangle size={15} className="text-red-400 flex-shrink-0" />
+                <AlertTriangle
+                  size={15}
+                  className="text-red-400 flex-shrink-0"
+                />
                 <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
@@ -783,7 +794,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                   <span className="typing-dot" />
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Grok está analizando las rutas logísticas...
+                  Claude está analizando las rutas logísticas...
                 </p>
               </div>
             )}
@@ -876,7 +887,10 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                 )}
 
                 <div className="flex items-start gap-1.5">
-                  <Info size={13} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                  <Info
+                    size={13}
+                    className="text-slate-400 mt-0.5 flex-shrink-0"
+                  />
                   <p className="text-slate-400 text-xs leading-relaxed">
                     Estimaciones orientativas. Consultá con un despachante para
                     valores exactos.
@@ -1285,8 +1299,8 @@ function Footer() {
           </span>
         </div>
         <p className="text-slate-500 text-xs mb-2">
-          Consultorio de Comercio Exterior Universitario · Potenciado por Grok ·
-          xAI · Deployado en Vercel
+          Consultorio de Comercio Exterior Universitario · Potenciado por Claude
+          · Anthropic · Deployado en Vercel
         </p>
         <p className="text-slate-600 text-xs">
           © 2025 ConExporta — Las estimaciones son orientativas y no constituyen

@@ -1,29 +1,12 @@
+import Anthropic from "@anthropic-ai/sdk";
+
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_USER_INPUT_CHARS = 2000;
 
-export async function POST(request) {
-  try {
-    // Fix #2: Validate Content-Type before parsing
-    const contentType = request.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      return Response.json(
-        { error: "Content-Type debe ser application/json." },
-        { status: 415 },
-      );
-    }
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const { messages, mode } = await request.json();
-
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) {
-      return Response.json(
-        { error: "XAI_API_KEY no configurada." },
-        { status: 500 },
-      );
-    }
-
-    const chatSystemPrompt = `Sos un experto en comercio exterior y logística internacional especializado en operaciones desde Argentina.
+const CHAT_SYSTEM_PROMPT = `Sos un experto en comercio exterior y logística internacional especializado en operaciones desde Argentina.
 Tu nombre es ConExporta AI y trabajás para el Consultorio de Comercio Exterior universitario ConExporta.
 
 Tu rol es ayudar con:
@@ -40,18 +23,32 @@ Tu rol es ayudar con:
 Respondé siempre en español argentino, de forma clara, profesional y empática. Usá ejemplos prácticos argentinos.
 Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente y redirigí al usuario.`;
 
-    const model = process.env.GROK_MODEL || "grok-beta";
+const CALCULATOR_SYSTEM_PROMPT =
+  "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown.";
 
-    const systemContent =
-      mode === "calculator"
-        ? "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown."
-        : chatSystemPrompt;
+export async function POST(request) {
+  try {
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return Response.json(
+        { error: "Content-Type debe ser application/json." },
+        { status: 415 },
+      );
+    }
+
+    const { messages, mode } = await request.json();
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return Response.json(
+        { error: "ANTHROPIC_API_KEY no configurada." },
+        { status: 500 },
+      );
+    }
 
     if (!messages?.length) {
       return Response.json({ error: "Sin mensajes." }, { status: 400 });
     }
 
-    // Fix #1: Validate message count and per-message length
     if (messages.length > MAX_MESSAGES) {
       return Response.json(
         { error: `El historial no puede superar ${MAX_MESSAGES} mensajes.` },
@@ -73,9 +70,8 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
       }
     }
 
-    // Fix #4: Sanitize user input — truncate each message to MAX_USER_INPUT_CHARS
     const sanitizedMessages = messages.map((msg) => ({
-      ...msg,
+      role: msg.role,
       content:
         typeof msg.content === "string"
           ? msg.content.slice(0, MAX_USER_INPUT_CHARS)
@@ -87,65 +83,31 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
         ? [{ role: "user", content: sanitizedMessages[0].content }]
         : sanitizedMessages;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 9000);
+    const model = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
+    const systemPrompt =
+      mode === "calculator" ? CALCULATOR_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
 
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: systemContent }, ...userMessages],
-        temperature: mode === "calculator" ? 0.3 : 0.7,
-        max_tokens: mode === "calculator" ? 512 : 2048,
-      }),
-      signal: controller.signal,
+    const response = await client.messages.create({
+      model,
+      max_tokens: mode === "calculator" ? 512 : 2048,
+      system: systemPrompt,
+      messages: userMessages,
     });
 
-    clearTimeout(timeout);
+    const reply = response.content?.[0]?.text || "Sin respuesta del asistente.";
+    return Response.json({ reply });
+  } catch (error) {
+    console.error("[chat] Error interno:", error);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `[chat] Error de API xAI (${response.status}): ${errorText}`,
-      );
-      let summaryMessage = "Error al comunicarse con el asistente.";
-      try {
-        const errorJson = JSON.parse(errorText);
-        const xaiMessage =
-          errorJson?.error?.message || errorJson?.message || null;
-        if (xaiMessage) {
-          summaryMessage = xaiMessage.slice(0, 200);
-        }
-      } catch {
-        // errorText no es JSON válido; usamos el mensaje genérico
-      }
+    if (error?.status) {
+      const msg = error?.error?.error?.message || error?.message || "";
+      const summary = msg.slice(0, 200);
       return Response.json(
-        {
-          error: `Error ${response.status} de la API: ${summaryMessage}`,
-        },
+        { error: `Error ${error.status} de la API: ${summary}` },
         { status: 502 },
       );
     }
 
-    const data = await response.json();
-    const reply =
-      data.choices?.[0]?.message?.content || "Sin respuesta del asistente.";
-
-    return Response.json({ reply });
-  } catch (error) {
-    console.error("[chat] Error interno:", error);
-    if (error?.name === "AbortError") {
-      return Response.json(
-        {
-          error: "El asistente tardó demasiado en responder. Intentá de nuevo.",
-        },
-        { status: 504 },
-      );
-    }
     return Response.json(
       { error: "Error interno del servidor. Intentá de nuevo más tarde." },
       { status: 500 },
