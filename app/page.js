@@ -491,8 +491,7 @@ function Chatbot() {
             Asistente de <span className="gold-text">Comercio Exterior</span>
           </h2>
           <p className="text-slate-400">
-            Powered by Claude · Anthropic — Especializado en operaciones
-            argentinas
+            Powered by Gemini · Google — Especializado en operaciones argentinas
           </p>
         </div>
 
@@ -513,7 +512,7 @@ function Chatbot() {
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-green-400 text-xs">
-                    En línea · Claude AI
+                    En línea · Gemini AI
                   </span>
                 </div>
               </div>
@@ -761,7 +760,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
           </h2>
           <p className="text-slate-400">
             Estimaciones orientativas de flete, seguro y tiempos de tránsito —
-            powered by Claude AI
+            powered by Gemini AI
           </p>
         </div>
 
@@ -1457,7 +1456,7 @@ function Footer() {
         </div>
         <p className="text-slate-500 text-xs mb-2">
           Consultorio de Comercio Exterior Universitario · Potenciado por Claude
-          · Anthropic · Deployado en Vercel
+          · Google · Deployado en Vercel
         </p>
         <p className="text-slate-600 text-xs">
           © 2025 ConExporta — Las estimaciones son orientativas y no constituyen

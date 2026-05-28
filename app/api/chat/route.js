@@ -1,10 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_USER_INPUT_CHARS = 2000;
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const CHAT_SYSTEM_PROMPT = `Sos un experto en comercio exterior y logística internacional especializado en operaciones desde Argentina.
 Tu nombre es ConExporta AI y trabajás para el Consultorio de Comercio Exterior universitario ConExporta.
@@ -38,9 +36,10 @@ export async function POST(request) {
 
     const { messages, mode } = await request.json();
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
       return Response.json(
-        { error: "ANTHROPIC_API_KEY no configurada." },
+        { error: "GEMINI_API_KEY no configurada." },
         { status: 500 },
       );
     }
@@ -70,40 +69,51 @@ export async function POST(request) {
       }
     }
 
-    const sanitizedMessages = messages.map((msg) => ({
-      role: msg.role,
+    const sanitized = messages.map((m) => ({
+      role: m.role,
       content:
-        typeof msg.content === "string"
-          ? msg.content.slice(0, MAX_USER_INPUT_CHARS)
-          : msg.content,
+        typeof m.content === "string"
+          ? m.content.slice(0, MAX_USER_INPUT_CHARS)
+          : m.content,
     }));
 
-    const userMessages =
-      mode === "calculator"
-        ? [{ role: "user", content: sanitizedMessages[0].content }]
-        : sanitizedMessages;
-
-    const model = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
+    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const systemPrompt =
       mode === "calculator" ? CALCULATOR_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: mode === "calculator" ? 512 : 2048,
-      system: systemPrompt,
-      messages: userMessages,
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction: systemPrompt,
     });
 
-    const reply = response.content?.[0]?.text || "Sin respuesta del asistente.";
-    return Response.json({ reply });
+    let reply;
+
+    if (mode === "calculator") {
+      const result = await model.generateContent(sanitized[0].content);
+      reply = result.response.text();
+    } else {
+      // Separar historial del último mensaje
+      const history = sanitized.slice(0, -1).map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      const lastMessage = sanitized[sanitized.length - 1].content;
+
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(lastMessage);
+      reply = result.response.text();
+    }
+
+    return Response.json({ reply: reply || "Sin respuesta del asistente." });
   } catch (error) {
     console.error("[chat] Error interno:", error);
 
-    if (error?.status) {
-      const msg = error?.error?.error?.message || error?.message || "";
-      const summary = msg.slice(0, 200);
+    const status = error?.status || error?.httpStatus;
+    if (status) {
+      const msg = (error?.message || "").slice(0, 200);
       return Response.json(
-        { error: `Error ${error.status} de la API: ${summary}` },
+        { error: `Error ${status} de la API: ${msg}` },
         { status: 502 },
       );
     }
