@@ -40,7 +40,7 @@ Tu rol es ayudar con:
 Respondé siempre en español argentino, de forma clara, profesional y empática. Usá ejemplos prácticos argentinos.
 Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente y redirigí al usuario.`;
 
-    const model = process.env.GROK_MODEL || "grok-3-mini";
+    const model = process.env.GROK_MODEL || "grok-beta";
 
     const systemContent =
       mode === "calculator"
