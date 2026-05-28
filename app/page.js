@@ -20,6 +20,8 @@ import {
   Phone,
   Mail,
   MapPin,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
@@ -36,6 +38,7 @@ function Navbar() {
 
   const links = [
     { label: "Asistente IA", href: "#chatbot" },
+    { label: "Cómo funciona", href: "#como-funciona" },
     { label: "Calculadora", href: "#calculadora" },
     { label: "Gestión", href: "#gestion" },
     { label: "Contacto", href: "#contacto" },
@@ -114,8 +117,8 @@ function Navbar() {
 function Hero() {
   const stats = [
     { value: "24/7", label: "Disponible" },
+    { value: "3 min", label: "Tiempo respuesta" },
     { value: "100%", label: "Gratuito" },
-    { value: "IA", label: "Grok · xAI" },
     { value: "ARG", label: "Especializado" },
   ];
 
@@ -125,7 +128,7 @@ function Hero() {
         <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-yellow-400 text-sm font-medium">
-            Asistente IA en línea
+            ✦ Consultorio de Comercio Exterior · UTN Rosario
           </span>
         </div>
 
@@ -486,6 +489,22 @@ function Calculadora() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  // Calcula el peso volumétrico según el tipo de transporte
+  const pesoVolumetrico = (() => {
+    const l = Number(form.largo);
+    const a = Number(form.ancho);
+    const h = Number(form.alto);
+    if (!l || !a || !h) return null;
+    const divisor = form.tipo === "aereo" ? 5000 : 6000;
+    return parseFloat(((l * a * h) / divisor).toFixed(2));
+  })();
+
+  const pesoFacturable = (() => {
+    const real = Number(form.peso);
+    if (!pesoVolumetrico || !real) return null;
+    return Math.max(real, pesoVolumetrico);
+  })();
+
   async function calcular(e) {
     e.preventDefault();
     if (
@@ -501,14 +520,22 @@ function Calculadora() {
     setResult(null);
     setLoading(true);
 
+    const pesoParaFacturar = pesoFacturable ?? Number(form.peso);
+    const notaVolumen =
+      pesoVolumetrico !== null
+        ? `- Peso volumétrico: ${pesoVolumetrico} kg (${form.tipo === "aereo" ? "fórmula /5000" : "fórmula /6000"})
+- Peso a facturar: ${pesoParaFacturar} kg (${pesoFacturable !== null && pesoFacturable === pesoVolumetrico ? "se usa el volumétrico, es mayor" : "se usa el real, es mayor"})`
+        : "";
+
     const prompt = `Sos un experto en costos logísticos argentinos.
 El usuario quiere calcular un envío con estos datos:
 - Tipo de transporte: ${form.tipo}
 - Origen: ${form.origen}
 - Destino: ${form.destino}
-- Peso: ${form.peso} kg
+- Peso real: ${form.peso} kg
 - Producto: ${form.producto}
 ${form.largo ? `- Dimensiones: ${form.largo}x${form.ancho}x${form.alto} cm` : ""}
+${notaVolumen}
 
 Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estructura exacta:
 {
@@ -541,14 +568,14 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
       } catch {
         // Limpiar markdown fences y reintentar
         const cleaned = raw
-          .replace(/^```(?:json)?\s*/i, "")
-          .replace(/\s*```$/, "")
+          .replace(/^```(?:json)?s*/i, "")
+          .replace(/s*```$/, "")
           .trim();
         try {
           parsed = JSON.parse(cleaned);
         } catch {
           // Extracción greedy: toma el bloque JSON más externo
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          const jsonMatch = raw.match(/{[sS]*}/);
           if (!jsonMatch)
             throw new Error("Respuesta inesperada del asistente.");
           parsed = JSON.parse(jsonMatch[0]);
@@ -695,9 +722,36 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                   />
                 ))}
               </div>
+              {/* Peso volumétrico calculado */}
+              {pesoVolumetrico !== null && (
+                <div className="mt-2 flex items-start gap-2 bg-yellow-400/5 border border-yellow-400/20 rounded-lg px-3 py-2">
+                  <Info size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-slate-300 leading-relaxed">
+                    <span className="font-medium text-yellow-400">
+                      Peso volumétrico: {pesoVolumetrico} kg
+                    </span>
+                    {" — Se factura el mayor"}
+                    {pesoFacturable !== null && (
+                      <span className="block text-slate-400 mt-0.5">
+                        Peso a facturar:{" "}
+                        <span className="font-medium text-white">
+                          {pesoFacturable} kg
+                        </span>{" "}
+                        ({pesoFacturable === pesoVolumetrico ? "volumétrico" : "real"})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {/* Error — justo arriba del botón */}
+            {error && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+                <AlertTriangle size={15} className="text-red-400 flex-shrink-0" />
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -774,6 +828,22 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                       {result.incoterm_recomendado}
                     </div>
                   </div>
+                  {/* Card Total estimado */}
+                  <div className="col-span-2 bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4">
+                    <div className="text-yellow-400 text-xs font-medium mb-1">
+                      Total estimado (flete + seguro)
+                    </div>
+                    <div className="text-yellow-300 font-bold text-xl">
+                      {result.moneda}{" "}
+                      {(
+                        (result.flete_min ?? 0) + (result.seguro_min ?? 0)
+                      ).toLocaleString()}{" "}
+                      –{" "}
+                      {(
+                        (result.flete_max ?? 0) + (result.seguro_max ?? 0)
+                      ).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
 
                 {result.documentos_clave?.length > 0 && (
@@ -805,10 +875,13 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                   </div>
                 )}
 
-                <p className="text-slate-600 text-xs">
-                  * Estimaciones orientativas. Consultá con un despachante para
-                  valores exactos.
-                </p>
+                <div className="flex items-start gap-1.5">
+                  <Info size={13} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Estimaciones orientativas. Consultá con un despachante para
+                    valores exactos.
+                  </p>
+                </div>
               </>
             )}
           </div>
@@ -894,7 +967,9 @@ function GestionFirmas() {
       !form.email ||
       !form.email.includes("@")
     ) {
-      setFormError("Completá todos los campos obligatorios con un email válido.");
+      setFormError(
+        "Completá todos los campos obligatorios con un email válido.",
+      );
       return;
     }
     setFormError("");
@@ -1045,28 +1120,26 @@ function GestionFirmas() {
             </div>
             <div className="sm:col-span-2 flex flex-col gap-3">
               <div className="flex gap-3">
-              <button
-                type="submit"
-                className="btn-gold px-6 py-2 rounded-lg text-sm"
-                style={{ color: '#0a1628' }}
-              >
-                Guardar empresa
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setForm(INITIAL_EMPRESA);
-                  setFormError("");
-                }}
-                className="px-6 py-2 rounded-lg text-sm border border-white/20 text-slate-400 hover:bg-white/5 transition-colors"
-              >
-                Cancelar
-              </button>
+                <button
+                  type="submit"
+                  className="btn-gold px-6 py-2 rounded-lg text-sm"
+                  style={{ color: "#0a1628" }}
+                >
+                  Guardar empresa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setForm(INITIAL_EMPRESA);
+                    setFormError("");
+                  }}
+                  className="px-6 py-2 rounded-lg text-sm border border-white/20 text-slate-400 hover:bg-white/5 transition-colors"
+                >
+                  Cancelar
+                </button>
               </div>
-              {formError && (
-                <p className="text-red-400 text-sm">{formError}</p>
-              )}
+              {formError && <p className="text-red-400 text-sm">{formError}</p>}
             </div>
           </form>
         )}
@@ -1224,6 +1297,80 @@ function Footer() {
   );
 }
 
+// ─── Cómo Funciona ────────────────────────────────────────────────────────────
+
+function ComoFunciona() {
+  const pasos = [
+    {
+      numero: "1",
+      icono: <MessageCircle size={28} />,
+      titulo: "Escribí tu consulta",
+      descripcion:
+        "Preguntá sobre exportaciones, documentación aduanera, Incoterms o logística.",
+    },
+    {
+      numero: "2",
+      icono: <Search size={28} />,
+      titulo: "La IA analiza tu caso",
+      descripcion:
+        "ConExporta AI procesa tu consulta con contexto específico de Argentina.",
+    },
+    {
+      numero: "3",
+      icono: <FileText size={28} />,
+      titulo: "Recibí la respuesta",
+      descripcion:
+        "Obtené información clara, con ejemplos prácticos y pasos a seguir.",
+    },
+  ];
+
+  return (
+    <section id="como-funciona" className="py-20 px-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+            ¿Cómo <span className="gold-text">funciona</span>?
+          </h2>
+          <p className="text-slate-400">
+            En tres pasos simples obtenés la respuesta que necesitás
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+          {pasos.map((paso, index) => (
+            <div key={paso.numero} className="flex md:contents">
+              {/* Card */}
+              <div className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1">
+                <div className="text-4xl font-extrabold gold-text leading-none">
+                  {paso.numero}
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400">
+                  {paso.icono}
+                </div>
+                <div>
+                  <div className="font-semibold text-white text-base mb-2">
+                    {paso.titulo}
+                  </div>
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    {paso.descripcion}
+                  </p>
+                </div>
+              </div>
+
+              {/* Arrow between cards (desktop only, not after last) */}
+              {index < pasos.length - 1 && (
+                <div className="hidden md:flex items-center justify-center text-yellow-400/40 text-2xl font-light px-2 self-center">
+                  →
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -1233,6 +1380,8 @@ export default function Home() {
       <main>
         <Hero />
         <FeaturesBar />
+        <hr className="section-divider" />
+        <ComoFunciona />
         <hr className="section-divider" />
         <Chatbot />
         <hr className="section-divider" />

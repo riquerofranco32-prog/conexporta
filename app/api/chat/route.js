@@ -40,7 +40,7 @@ Tu rol es ayudar con:
 Respondé siempre en español argentino, de forma clara, profesional y empática. Usá ejemplos prácticos argentinos.
 Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente y redirigí al usuario.`;
 
-    const model = process.env.GROK_MODEL || "grok-3";
+    const model = process.env.GROK_MODEL || "grok-3-mini";
 
     const systemContent =
       mode === "calculator"
@@ -88,7 +88,7 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
         : sanitizedMessages;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
+    const timeout = setTimeout(() => controller.abort(), 9000);
 
     const response = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
@@ -108,15 +108,24 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
     clearTimeout(timeout);
 
     if (!response.ok) {
-      // Fix #3: Log full error server-side, return only a generic message to the client
       const errorText = await response.text();
       console.error(
         `[chat] Error de API xAI (${response.status}): ${errorText}`,
       );
+      let summaryMessage = "Error al comunicarse con el asistente.";
+      try {
+        const errorJson = JSON.parse(errorText);
+        const xaiMessage =
+          errorJson?.error?.message || errorJson?.message || null;
+        if (xaiMessage) {
+          summaryMessage = xaiMessage.slice(0, 200);
+        }
+      } catch {
+        // errorText no es JSON válido; usamos el mensaje genérico
+      }
       return Response.json(
         {
-          error:
-            "Error al comunicarse con el asistente. Intentá de nuevo más tarde.",
+          error: `Error ${response.status} de la API: ${summaryMessage}`,
         },
         { status: 502 },
       );
@@ -128,8 +137,15 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
 
     return Response.json({ reply });
   } catch (error) {
-    // Fix #5: Log real error server-side, return a generic message to the client
     console.error("[chat] Error interno:", error);
+    if (error?.name === "AbortError") {
+      return Response.json(
+        {
+          error: "El asistente tardó demasiado en responder. Intentá de nuevo.",
+        },
+        { status: 504 },
+      );
+    }
     return Response.json(
       { error: "Error interno del servidor. Intentá de nuevo más tarde." },
       { status: 500 },
