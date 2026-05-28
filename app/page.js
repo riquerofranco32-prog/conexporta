@@ -294,7 +294,7 @@ function ChatPreview() {
           <div className="text-white text-sm font-semibold">ConExporta AI</div>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-green-400 text-xs">En línea · Gemini AI</span>
+            <span className="text-green-400 text-xs">En línea · Claude AI</span>
           </div>
         </div>
       </div>
@@ -599,7 +599,8 @@ function Chatbot() {
             Asistente de <span className="gold-text">Comercio Exterior</span>
           </h2>
           <p className="text-slate-400">
-            Powered by Gemini · Google — Especializado en operaciones argentinas
+            Powered by Claude · Anthropic — Especializado en operaciones
+            argentinas
           </p>
         </div>
 
@@ -620,7 +621,7 @@ function Chatbot() {
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-green-400 text-xs">
-                    En línea · Gemini AI
+                    En línea · Claude AI
                   </span>
                 </div>
               </div>
@@ -868,7 +869,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
           </h2>
           <p className="text-slate-400">
             Estimaciones orientativas de flete, seguro y tiempos de tránsito —
-            powered by Gemini AI
+            powered by Claude AI
           </p>
         </div>
 

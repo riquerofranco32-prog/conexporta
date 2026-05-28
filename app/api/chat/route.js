@@ -1,8 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_USER_INPUT_CHARS = 2000;
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const CHAT_SYSTEM_PROMPT = `Sos un experto en comercio exterior y logística internacional especializado en operaciones desde Argentina.
 Tu nombre es ConExporta AI y trabajás para el Consultorio de Comercio Exterior universitario ConExporta.
@@ -36,10 +38,9 @@ export async function POST(request) {
 
     const { messages, mode } = await request.json();
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return Response.json(
-        { error: "GEMINI_API_KEY no configurada." },
+        { error: "ANTHROPIC_API_KEY no configurada." },
         { status: 500 },
       );
     }
@@ -77,52 +78,44 @@ export async function POST(request) {
           : m.content,
     }));
 
-    const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const userMessages =
+      mode === "calculator"
+        ? [{ role: "user", content: sanitized[0].content }]
+        : sanitized;
+
+    const model = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
     const systemPrompt =
       mode === "calculator" ? CALCULATOR_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: systemPrompt,
+    const response = await client.messages.create({
+      model,
+      max_tokens: mode === "calculator" ? 512 : 2048,
+      system: systemPrompt,
+      messages: userMessages,
     });
 
-    let reply;
-
-    if (mode === "calculator") {
-      const result = await model.generateContent(sanitized[0].content);
-      reply = result.response.text();
-    } else {
-      // Separar historial del último mensaje
-      const history = sanitized.slice(0, -1).map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
-      const lastMessage = sanitized[sanitized.length - 1].content;
-
-      const chat = model.startChat({ history });
-      const result = await chat.sendMessage(lastMessage);
-      reply = result.response.text();
-    }
-
-    return Response.json({ reply: reply || "Sin respuesta del asistente." });
+    const reply = response.content?.[0]?.text || "Sin respuesta del asistente.";
+    return Response.json({ reply });
   } catch (error) {
     console.error("[chat] Error interno:", error);
 
-    const status = error?.status || error?.httpStatus;
-    if (status === 429) {
+    if (error?.status === 429) {
       return Response.json(
         {
           error:
-            "Límite de consultas alcanzado (plan gratuito). Esperá unos segundos e intentá de nuevo.",
+            "Límite de consultas alcanzado. Esperá unos segundos e intentá de nuevo.",
         },
         { status: 429 },
       );
     }
-    if (status) {
-      const msg = (error?.message || "").slice(0, 200);
+
+    if (error?.status) {
+      const msg = (error?.error?.error?.message || error?.message || "").slice(
+        0,
+        200,
+      );
       return Response.json(
-        { error: `Error ${status} de la API: ${msg}` },
+        { error: `Error ${error.status} de la API: ${msg}` },
         { status: 502 },
       );
     }
