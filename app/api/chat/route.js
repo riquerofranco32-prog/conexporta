@@ -1,5 +1,18 @@
+const MAX_MESSAGES = 30;
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_USER_INPUT_CHARS = 2000;
+
 export async function POST(request) {
   try {
+    // Fix #2: Validate Content-Type before parsing
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return Response.json(
+        { error: "Content-Type debe ser application/json." },
+        { status: 415 },
+      );
+    }
+
     const { messages, mode } = await request.json();
 
     const apiKey = process.env.XAI_API_KEY;
@@ -34,10 +47,48 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
         ? "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown."
         : chatSystemPrompt;
 
+    if (!messages?.length) {
+      return Response.json({ error: "Sin mensajes." }, { status: 400 });
+    }
+
+    // Fix #1: Validate message count and per-message length
+    if (messages.length > MAX_MESSAGES) {
+      return Response.json(
+        { error: `El historial no puede superar ${MAX_MESSAGES} mensajes.` },
+        { status: 400 },
+      );
+    }
+
+    for (const msg of messages) {
+      if (
+        typeof msg.content === "string" &&
+        msg.content.length > MAX_MESSAGE_CHARS
+      ) {
+        return Response.json(
+          {
+            error: `Cada mensaje no puede superar ${MAX_MESSAGE_CHARS} caracteres.`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Fix #4: Sanitize user input — truncate each message to MAX_USER_INPUT_CHARS
+    const sanitizedMessages = messages.map((msg) => ({
+      ...msg,
+      content:
+        typeof msg.content === "string"
+          ? msg.content.slice(0, MAX_USER_INPUT_CHARS)
+          : msg.content,
+    }));
+
     const userMessages =
       mode === "calculator"
-        ? [{ role: "user", content: messages[0].content }]
-        : messages;
+        ? [{ role: "user", content: sanitizedMessages[0].content }]
+        : sanitizedMessages;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
 
     const response = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
@@ -49,14 +100,24 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
         model,
         messages: [{ role: "system", content: systemContent }, ...userMessages],
         temperature: mode === "calculator" ? 0.3 : 0.7,
-        max_tokens: mode === "calculator" ? 512 : 1024,
+        max_tokens: mode === "calculator" ? 512 : 2048,
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
     if (!response.ok) {
+      // Fix #3: Log full error server-side, return only a generic message to the client
       const errorText = await response.text();
+      console.error(
+        `[chat] Error de API xAI (${response.status}): ${errorText}`,
+      );
       return Response.json(
-        { error: `Error de API (${response.status}): ${errorText}` },
+        {
+          error:
+            "Error al comunicarse con el asistente. Intentá de nuevo más tarde.",
+        },
         { status: 502 },
       );
     }
@@ -67,6 +128,11 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
 
     return Response.json({ reply });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Fix #5: Log real error server-side, return a generic message to the client
+    console.error("[chat] Error interno:", error);
+    return Response.json(
+      { error: "Error interno del servidor. Intentá de nuevo más tarde." },
+      { status: 500 },
+    );
   }
 }

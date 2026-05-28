@@ -206,6 +206,37 @@ function FeaturesBar() {
 
 // ─── Chatbot ──────────────────────────────────────────────────────────────────
 
+function renderMarkdown(text) {
+  return text.split("\n").map((line, i) => {
+    // Listas: líneas que empiezan con "- "
+    if (line.startsWith("- ")) {
+      const content = line.slice(2);
+      const parts = content.split(/\*\*(.+?)\*\*/g);
+      return (
+        <div key={i} className="flex gap-1.5 items-start">
+          <span className="mt-1 text-yellow-400 flex-shrink-0">•</span>
+          <span>
+            {parts.map((p, j) =>
+              j % 2 === 1 ? <strong key={j}>{p}</strong> : p,
+            )}
+          </span>
+        </div>
+      );
+    }
+    // Línea vacía → espacio
+    if (line.trim() === "") {
+      return <div key={i} className="h-2" />;
+    }
+    // Negrita inline
+    const parts = line.split(/\*\*(.+?)\*\*/g);
+    return (
+      <div key={i}>
+        {parts.map((p, j) => (j % 2 === 1 ? <strong key={j}>{p}</strong> : p))}
+      </div>
+    );
+  });
+}
+
 const SUGGESTED_QUESTIONS = [
   "¿Qué documentos necesito para exportar por primera vez?",
   "¿Cuál es la diferencia entre FOB y CIF?",
@@ -226,6 +257,7 @@ function Chatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -242,13 +274,24 @@ function Chatbot() {
     setMessages(updated);
     setInput("");
     setLoading(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updated.map((m) => ({ role: m.role, content: m.content })),
+          messages: updated
+            .filter(
+              (m, idx) =>
+                !(
+                  idx === 0 &&
+                  m.role === "assistant" &&
+                  m.content.startsWith("¡Hola!")
+                ),
+            )
+            .slice(-20)
+            .map((m) => ({ role: m.role, content: m.content })),
         }),
       });
       const data = await res.json();
@@ -310,7 +353,7 @@ function Chatbot() {
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-green-400 text-xs">
-                    En línea · grok-3-latest
+                    En línea · Grok AI
                   </span>
                 </div>
               </div>
@@ -332,14 +375,14 @@ function Chatbot() {
                 className={`chat-bubble flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-yellow-400 font-medium"
-                      : "bg-white/10 text-slate-100"
+                      ? "bg-yellow-400 font-medium whitespace-pre-wrap"
+                      : "bg-white/10 text-slate-100 flex flex-col gap-0.5"
                   }`}
                   style={m.role === "user" ? { color: "#0a1628" } : {}}
                 >
-                  {m.content}
+                  {m.role === "user" ? m.content : renderMarkdown(m.content)}
                 </div>
               </div>
             ))}
@@ -357,7 +400,7 @@ function Chatbot() {
           </div>
 
           {/* Suggested questions */}
-          <div className="px-5 pb-3 flex gap-2 overflow-x-auto">
+          <div className="px-5 pb-3 flex flex-wrap sm:flex-nowrap gap-2 sm:overflow-x-auto">
             {SUGGESTED_QUESTIONS.map((q) => (
               <button
                 key={q}
@@ -374,6 +417,7 @@ function Chatbot() {
           <div className="px-5 pb-5">
             <div className="flex gap-3 items-end">
               <textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -495,9 +539,20 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
       try {
         parsed = JSON.parse(raw);
       } catch {
-        const jsonMatch = raw.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/);
-        if (!jsonMatch) throw new Error("Respuesta inesperada del asistente.");
-        parsed = JSON.parse(jsonMatch[0]);
+        // Limpiar markdown fences y reintentar
+        const cleaned = raw
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```$/, "")
+          .trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          // Extracción greedy: toma el bloque JSON más externo
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          if (!jsonMatch)
+            throw new Error("Respuesta inesperada del asistente.");
+          parsed = JSON.parse(jsonMatch[0]);
+        }
       }
       setResult(parsed);
     } catch (err) {
@@ -811,6 +866,7 @@ function GestionFirmas() {
   const [form, setForm] = useState(INITIAL_EMPRESA);
   const [showForm, setShowForm] = useState(false);
   const [nextId, setNextId] = useState(4);
+  const [formError, setFormError] = useState("");
 
   const filtered = empresas.filter(
     (e) =>
@@ -837,8 +893,11 @@ function GestionFirmas() {
       !form.contacto ||
       !form.email ||
       !form.email.includes("@")
-    )
+    ) {
+      setFormError("Completá todos los campos obligatorios con un email válido.");
       return;
+    }
+    setFormError("");
     setEmpresas((prev) => [...prev, { ...form, id: nextId }]);
     setNextId((n) => n + 1);
     setForm(INITIAL_EMPRESA);
@@ -984,10 +1043,12 @@ function GestionFirmas() {
                 ))}
               </select>
             </div>
-            <div className="sm:col-span-2 flex gap-3">
+            <div className="sm:col-span-2 flex flex-col gap-3">
+              <div className="flex gap-3">
               <button
                 type="submit"
                 className="btn-gold px-6 py-2 rounded-lg text-sm"
+                style={{ color: '#0a1628' }}
               >
                 Guardar empresa
               </button>
@@ -996,11 +1057,16 @@ function GestionFirmas() {
                 onClick={() => {
                   setShowForm(false);
                   setForm(INITIAL_EMPRESA);
+                  setFormError("");
                 }}
                 className="px-6 py-2 rounded-lg text-sm border border-white/20 text-slate-400 hover:bg-white/5 transition-colors"
               >
                 Cancelar
               </button>
+              </div>
+              {formError && (
+                <p className="text-red-400 text-sm">{formError}</p>
+              )}
             </div>
           </form>
         )}
