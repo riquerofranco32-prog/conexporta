@@ -17,6 +17,9 @@
 }
 
 html {
+  /* scroll-behavior se activa via JS después del mount para evitar restauración de posición */
+}
+html.smooth-scroll {
   scroll-behavior: smooth;
 }
 
@@ -96,6 +99,7 @@ body {
   background: rgba(10, 22, 40, 0.95);
   backdrop-filter: blur(16px);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(245, 200, 66, 0.15);
 }
 
 /* Chat bubble animations */
@@ -136,4 +140,61 @@ body {
     transparent
   );
   margin: 0;
+}
+
+/* Fade-in-up scroll reveal */
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+.fade-in-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Badge pulse */
+@keyframes badgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+.badge-pulse {
+  animation: badgePulse 2.5s ease-in-out infinite;
+}
+
+/* Card hover */
+.glass-card {
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease;
+}
+.glass-card:hover {
+  border-color: rgba(245, 200, 66, 0.35);
+}
+
+/* Typewriter cursor */
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #f5c842;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }

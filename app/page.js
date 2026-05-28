@@ -24,16 +24,146 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+// ─── Utility Hooks ───────────────────────────────────────────────────────────
+
+// Activa scroll-behavior: smooth solo después del mount (evita restaurar posición del browser)
+function useScrollSetup() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+    const t = setTimeout(() => {
+      document.documentElement.classList.add("smooth-scroll");
+    }, 100);
+    return () => clearTimeout(t);
+  }, []);
+}
+
+// IntersectionObserver para agregar clase .visible a elementos .fade-in-up
+function useScrollReveal() {
+  useEffect(() => {
+    const elements = document.querySelectorAll(".fade-in-up");
+    if (!elements.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+}
+
+// Typewriter: rota entre palabras con cursor parpadeante
+function useTypewriter(words, speed = 80, pause = 1800) {
+  const [display, setDisplay] = useState(words[0]);
+
+  useEffect(() => {
+    let wordIdx = 0;
+    let charIdx = words[0].length;
+    let deleting = false;
+    let timeout;
+
+    function tick() {
+      const current = words[wordIdx];
+      if (!deleting) {
+        charIdx++;
+        if (charIdx > current.length) {
+          deleting = true;
+          timeout = setTimeout(tick, pause);
+          return;
+        }
+      } else {
+        charIdx--;
+        if (charIdx === 0) {
+          deleting = false;
+          wordIdx = (wordIdx + 1) % words.length;
+          timeout = setTimeout(tick, 300);
+          return;
+        }
+      }
+      setDisplay(words[wordIdx].slice(0, charIdx));
+      timeout = setTimeout(tick, deleting ? speed / 2 : speed);
+    }
+
+    timeout = setTimeout(tick, pause);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  return { display };
+}
+
+// Contador animado de 0 a value cuando el ref entra en viewport
+function useCountUp(value, duration = 1200) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = Date.now();
+          const step = () => {
+            const progress = Math.min((Date.now() - start) / duration, 1);
+            setCount(Math.floor(progress * value));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value, duration]);
+
+  return { count, ref };
+}
+
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const ids = [
+      "chatbot",
+      "como-funciona",
+      "calculadora",
+      "gestion",
+      "contacto",
+    ];
+    const observers = ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { threshold: 0.3 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach((o) => o?.disconnect());
   }, []);
 
   const links = [
@@ -70,7 +200,11 @@ function Navbar() {
               <a
                 key={l.href}
                 href={l.href}
-                className="text-slate-300 hover:text-yellow-400 text-sm font-medium transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  activeSection === l.href.replace("#", "")
+                    ? "text-yellow-400"
+                    : "text-slate-300 hover:text-yellow-400"
+                }`}
               >
                 {l.label}
               </a>
@@ -114,6 +248,26 @@ function Navbar() {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
+const ROTATE_WORDS = [
+  "exportaciones",
+  "importaciones",
+  "Incoterms",
+  "logística",
+];
+
+function StatCard({ value, label }) {
+  const match = value.match(/^(\d+)(.*)$/);
+  const { count, ref } = useCountUp(match ? Number(match[1]) : 0);
+  return (
+    <div ref={ref} className="glass-card p-4 fade-in-up">
+      <div className="text-2xl font-bold gold-text">
+        {match ? `${count}${match[2]}` : value}
+      </div>
+      <div className="text-slate-400 text-xs mt-1">{label}</div>
+    </div>
+  );
+}
+
 function Hero() {
   const stats = [
     { value: "24/7", label: "Disponible" },
@@ -121,11 +275,12 @@ function Hero() {
     { value: "100%", label: "Gratuito" },
     { value: "ARG", label: "Especializado" },
   ];
+  const { display: twDisplay } = useTypewriter(ROTATE_WORDS);
 
   return (
-    <section className="hero-gradient min-h-screen flex flex-col items-center justify-center text-center px-4 pt-16">
+    <section className="hero-gradient min-h-dvh flex flex-col items-center justify-center text-center px-4 pt-16">
       <div className="max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6">
+        <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-yellow-400 text-sm font-medium">
             ✦ Consultorio de Comercio Exterior · UTN Rosario
@@ -139,12 +294,12 @@ function Hero() {
         </h1>
 
         <p className="text-slate-300 text-lg sm:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
-          ConExporta AI responde tus dudas sobre exportaciones, importaciones,
-          documentación aduanera, Incoterms y logística internacional desde
-          Argentina — al instante.
+          Resolvé tus dudas sobre{" "}
+          <span className="text-yellow-400 font-semibold">{twDisplay}</span>
+          <span className="typewriter-cursor" /> desde Argentina — al instante.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
           <a
             href="#chatbot"
             className="btn-gold px-8 py-3 rounded-xl text-base"
@@ -159,13 +314,14 @@ function Hero() {
           </a>
         </div>
 
+        <p className="text-slate-500 text-sm mb-10">
+          +200 consultas respondidas · Documentación aduanera · Incoterms 2020
+        </p>
+
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
           {stats.map((s) => (
-            <div key={s.label} className="glass-card p-4">
-              <div className="text-2xl font-bold gold-text">{s.value}</div>
-              <div className="text-slate-400 text-xs mt-1">{s.label}</div>
-            </div>
+            <StatCard key={s.label} value={s.value} label={s.label} />
           ))}
         </div>
       </div>
@@ -331,7 +487,7 @@ function Chatbot() {
     <section id="chatbot" className="py-20 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
             Asistente de <span className="gold-text">Comercio Exterior</span>
           </h2>
           <p className="text-slate-400">
@@ -600,7 +756,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
     <section id="calculadora" className="py-20 px-4 bg-white/5">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
             Calculadora de <span className="gold-text">Envíos</span>
           </h2>
           <p className="text-slate-400">
@@ -1007,7 +1163,7 @@ function GestionFirmas() {
     <section id="gestion" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
             Gestión de <span className="gold-text">Firmas</span>
           </h2>
           <p className="text-slate-400">
@@ -1234,10 +1390,10 @@ function Contacto() {
   return (
     <section id="contacto" className="py-20 px-4 bg-white/5">
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
           Consultorio <span className="gold-text">ConExporta</span>
         </h2>
-        <p className="text-slate-400 mb-12">
+        <p className="text-slate-400 mb-12 fade-in-up">
           Para consultas complejas o asesoramiento personalizado, contactá a
           nuestros especialistas.
         </p>
@@ -1262,10 +1418,11 @@ function Contacto() {
               value: "Facultad de Ciencias Económicas",
               sub: "Rosario, Santa Fe, Argentina",
             },
-          ].map((c) => (
+          ].map((c, i) => (
             <div
               key={c.title}
-              className="glass-card p-6 flex flex-col items-center gap-3"
+              className="glass-card p-6 flex flex-col items-center gap-3 fade-in-up"
+              style={{ transitionDelay: `${i * 0.1}s` }}
             >
               <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400">
                 {c.icon}
@@ -1342,7 +1499,7 @@ function ComoFunciona() {
     <section id="como-funciona" className="py-20 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
             ¿Cómo <span className="gold-text">funciona</span>?
           </h2>
           <p className="text-slate-400">
@@ -1354,7 +1511,10 @@ function ComoFunciona() {
           {pasos.map((paso, index) => (
             <div key={paso.numero} className="flex md:contents">
               {/* Card */}
-              <div className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1">
+              <div
+                className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1 fade-in-up"
+                style={{ transitionDelay: `${index * 0.12}s` }}
+              >
                 <div className="text-4xl font-extrabold gold-text leading-none">
                   {paso.numero}
                 </div>
@@ -1388,6 +1548,8 @@ function ComoFunciona() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  useScrollSetup();
+  useScrollReveal();
   return (
     <>
       <Navbar />
