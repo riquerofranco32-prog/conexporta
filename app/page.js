@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {
   MessageCircle,
   Calculator,
@@ -26,15 +26,21 @@ import {
 
 // ─── Utility Hooks ───────────────────────────────────────────────────────────
 
-// Activa scroll-behavior: smooth solo después del mount (evita restaurar posición del browser)
+// Fuerza scroll al top antes del primer paint (useLayoutEffect) y luego activa smooth-scroll
 function useScrollSetup() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
-    history.scrollRestoration = "manual";
-    window.scrollTo(0, 0);
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    // Scroll instantáneo antes del paint — cubre tanto hard reload como soft nav de Next.js
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
+    // Segunda pasada post-hydration por si Next.js restauró después del layout
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     const t = setTimeout(() => {
       document.documentElement.classList.add("smooth-scroll");
-    }, 100);
+    }, 150);
     return () => clearTimeout(t);
   }, []);
 }
