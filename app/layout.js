@@ -11,6 +11,14 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
+      <head>
+        {/* Deshabilita la restauración de scroll del browser antes de React */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "history.scrollRestoration='manual';window.scrollTo(0,0);",
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
