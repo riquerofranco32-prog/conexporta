@@ -513,16 +513,28 @@ const SUGGESTED_QUESTIONS = [
   "¿Cuáles son los puertos principales de Argentina?",
 ];
 
+function nowTime() {
+  return new Date().toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const TRUNCATE_AT = 400;
+const PREVIEW_LEN = 200;
+
 function Chatbot() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       content:
         "¡Hola! Soy ConExporta AI, tu asistente de comercio exterior argentino. Podés consultarme sobre documentación aduanera, Incoterms, logística, organismos reguladores y mucho más. ¿En qué te puedo ayudar hoy?",
+      time: nowTime(),
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(new Set());
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -533,11 +545,20 @@ function Chatbot() {
     return () => clearTimeout(timer);
   }, [messages, loading]);
 
+  function toggleExpand(idx) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  }
+
   async function sendMessage(text) {
     const userMsg = text || input.trim();
     if (!userMsg || loading) return;
 
-    const updated = [...messages, { role: "user", content: userMsg }];
+    const t = nowTime();
+    const updated = [...messages, { role: "user", content: userMsg, time: t }];
     setMessages(updated);
     setInput("");
     setLoading(true);
@@ -567,6 +588,7 @@ function Chatbot() {
         {
           role: "assistant",
           content: data.reply || data.error || "Error al obtener respuesta.",
+          time: nowTime(),
         },
       ]);
     } catch {
@@ -575,6 +597,7 @@ function Chatbot() {
         {
           role: "assistant",
           content: "Error de conexión. Verificá tu conexión a internet.",
+          time: nowTime(),
         },
       ]);
     } finally {
@@ -587,8 +610,10 @@ function Chatbot() {
       {
         role: "assistant",
         content: "¡Hola de nuevo! ¿En qué puedo ayudarte?",
+        time: nowTime(),
       },
     ]);
+    setExpanded(new Set());
   }
 
   return (
@@ -637,23 +662,47 @@ function Chatbot() {
 
           {/* Messages */}
           <div className="h-96 overflow-y-auto p-5 flex flex-col gap-4">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`chat-bubble flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              const isLong = m.content.length > TRUNCATE_AT;
+              const isExpanded = expanded.has(i);
+              const displayContent =
+                isLong && !isExpanded
+                  ? m.content.slice(0, PREVIEW_LEN) + "…"
+                  : m.content;
+
+              return (
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    m.role === "user"
-                      ? "bg-yellow-400 font-medium whitespace-pre-wrap"
-                      : "bg-white/10 text-slate-100 flex flex-col gap-0.5"
-                  }`}
-                  style={m.role === "user" ? { color: "#0a1628" } : {}}
+                  key={i}
+                  className={`chat-bubble flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}
                 >
-                  {m.role === "user" ? m.content : renderMarkdown(m.content)}
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      isUser
+                        ? "bg-yellow-400 font-medium whitespace-pre-wrap"
+                        : "bg-white/10 text-slate-100 flex flex-col gap-0.5"
+                    }`}
+                    style={isUser ? { color: "#0a1628" } : {}}
+                  >
+                    {isUser ? displayContent : renderMarkdown(displayContent)}
+                    {isLong && (
+                      <button
+                        onClick={() => toggleExpand(i)}
+                        className={`mt-2 text-xs font-semibold underline ${isUser ? "text-navy-900/60" : "text-yellow-400/80"} hover:opacity-100`}
+                        style={isUser ? { color: "rgba(10,22,40,0.6)" } : {}}
+                      >
+                        {isExpanded ? "Ver menos" : "Ver más"}
+                      </button>
+                    )}
+                  </div>
+                  {m.time && (
+                    <span className="text-slate-600 text-xs px-1">
+                      {m.time}
+                    </span>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {loading && (
               <div className="flex justify-start">

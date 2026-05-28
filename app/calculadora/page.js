@@ -8,15 +8,12 @@ import {
   Package,
   ChevronRight,
   ChevronLeft,
-  Download,
+  Copy,
   CheckCircle,
   Loader2,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
-import { Doughnut } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 
@@ -36,6 +33,7 @@ const DESTINOS = [
   "Hamburgo, Alemania",
   "Los Ángeles, USA",
   "Valencia, España",
+  "Ciudad de México, México",
 ];
 
 const MODOS = [
@@ -71,7 +69,16 @@ const CATEGORIAS = [
   "Alimentos",
   "Textil",
   "Vehículos",
+  "Químicos",
   "Otro",
+];
+
+const BAR_COLORS = [
+  "bg-yellow-400",
+  "bg-blue-400",
+  "bg-green-400",
+  "bg-orange-400",
+  "bg-purple-400",
 ];
 
 const INITIAL_FORM = {
@@ -84,14 +91,43 @@ const INITIAL_FORM = {
   largo: "",
   ancho: "",
   alto: "",
+  cargaPeligrosa: false,
+  requiereRefrigeracion: false,
 };
 
-// ── Stepper indicator ────────────────────────────────────────────────────────
+// ── CSS Bar Chart ────────────────────────────────────────────────────────────
+
+function BarChart({ items }) {
+  const max = Math.max(...items.map((i) => i.value), 1);
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map((item, i) => (
+        <div key={item.label}>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-slate-400">{item.label}</span>
+            <span className="text-white font-medium">
+              USD{" "}
+              {item.value.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+            </span>
+          </div>
+          <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${BAR_COLORS[i % BAR_COLORS.length]}`}
+              style={{ width: `${(item.value / max) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Stepper ──────────────────────────────────────────────────────────────────
 
 function Stepper({ step }) {
   const steps = ["Origen y destino", "Detalles de carga", "Resultados"];
   return (
-    <div className="flex items-center gap-0 mb-8">
+    <div className="flex items-center mb-8">
       {steps.map((s, i) => (
         <div key={s} className="flex items-center">
           <div className="flex flex-col items-center gap-1">
@@ -100,7 +136,7 @@ function Stepper({ step }) {
                 i + 1 < step
                   ? "bg-green-500 text-white"
                   : i + 1 === step
-                    ? "bg-yellow-400 text-navy-900"
+                    ? "bg-yellow-400"
                     : "bg-white/10 text-slate-500"
               }`}
               style={i + 1 === step ? { color: "#0a1628" } : {}}
@@ -108,14 +144,20 @@ function Stepper({ step }) {
               {i + 1 < step ? <CheckCircle size={16} /> : i + 1}
             </div>
             <span
-              className={`text-xs whitespace-nowrap hidden sm:block ${i + 1 === step ? "text-yellow-400 font-medium" : "text-slate-500"}`}
+              className={`text-xs whitespace-nowrap hidden sm:block ${
+                i + 1 === step
+                  ? "text-yellow-400 font-medium"
+                  : "text-slate-500"
+              }`}
             >
               {s}
             </span>
           </div>
           {i < steps.length - 1 && (
             <div
-              className={`h-px w-12 sm:w-20 mx-1 mb-5 transition-all ${i + 1 < step ? "bg-green-500" : "bg-white/10"}`}
+              className={`h-px w-12 sm:w-20 mx-1 mb-5 transition-all ${
+                i + 1 < step ? "bg-green-500" : "bg-white/10"
+              }`}
             />
           )}
         </div>
@@ -124,7 +166,7 @@ function Stepper({ step }) {
   );
 }
 
-// ── Panel lateral (info del envío) ───────────────────────────────────────────
+// ── Panel lateral ────────────────────────────────────────────────────────────
 
 function ProductPanel({ form }) {
   const modoInfo = MODOS.find((m) => m.value === form.modo);
@@ -137,16 +179,14 @@ function ProductPanel({ form }) {
       : null;
 
   return (
-    <div className="glass-card p-6 flex flex-col gap-5 h-fit sticky top-24">
-      {/* Imagen placeholder */}
+    <div className="glass-card p-6 flex flex-col gap-4 h-fit sticky top-24">
       <div className="w-full aspect-square rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-3">
-        <Package size={48} className="text-yellow-400/40" />
-        <span className="text-slate-500 text-sm">Vista previa de carga</span>
+        <Package size={44} className="text-yellow-400/40" />
+        <span className="text-slate-500 text-sm">Vista previa</span>
       </div>
 
-      {/* Nombre producto */}
       <div>
-        <div className="text-xs text-slate-500 mb-1">Producto</div>
+        <div className="text-xs text-slate-500 mb-0.5">Producto</div>
         <div className="text-white font-semibold">{form.producto || "—"}</div>
         {form.categoria && form.categoria !== "Otro" && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 mt-1 inline-block">
@@ -155,7 +195,6 @@ function ProductPanel({ form }) {
         )}
       </div>
 
-      {/* Specs */}
       <div className="flex flex-col gap-2 text-sm">
         {form.modo && (
           <div className="flex items-center gap-2 text-slate-300">
@@ -180,7 +219,7 @@ function ProductPanel({ form }) {
         {form.largo && form.ancho && form.alto && (
           <div className="flex justify-between text-slate-400">
             <span>Dimensiones</span>
-            <span className="text-white">
+            <span className="text-white text-xs">
               {form.largo}×{form.ancho}×{form.alto} cm
             </span>
           </div>
@@ -201,6 +240,16 @@ function ProductPanel({ form }) {
             </span>
           </div>
         )}
+        {form.cargaPeligrosa && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 inline-block w-fit">
+            ⚠ Carga peligrosa
+          </span>
+        )}
+        {form.requiereRefrigeracion && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-block w-fit">
+            ❄ Refrigeración
+          </span>
+        )}
       </div>
     </div>
   );
@@ -209,6 +258,8 @@ function ProductPanel({ form }) {
 // ── Resultados ───────────────────────────────────────────────────────────────
 
 function Resultados({ result, form, onReset }) {
+  const [copied, setCopied] = useState(false);
+
   const items = [
     {
       label: "Flete " + (form.modo?.includes("aereo") ? "aéreo" : "marítimo"),
@@ -220,42 +271,19 @@ function Resultados({ result, form, onReset }) {
     { label: "IVA (21%)", value: result.iva },
   ];
 
-  const chartData = {
-    labels: items.map((i) => i.label),
-    datasets: [
-      {
-        data: items.map((i) => i.value),
-        backgroundColor: [
-          "rgba(245, 200, 66, 0.8)",
-          "rgba(99, 179, 237, 0.8)",
-          "rgba(154, 205, 50, 0.8)",
-          "rgba(252, 129, 74, 0.8)",
-          "rgba(167, 139, 250, 0.8)",
-        ],
-        borderColor: "rgba(10, 22, 40, 0.8)",
-        borderWidth: 2,
-      },
-    ],
-  };
+  const modoLabel =
+    MODOS.find((m) => m.value === form.modo)?.label || form.modo;
 
-  const chartOptions = {
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: { color: "#94a3b8", font: { size: 11 }, padding: 12 },
-      },
-    },
-    cutout: "65%",
-  };
-
-  function downloadResumen() {
+  function copiarResumen() {
     const lines = [
       "COTIZACIÓN CONEXPORTA",
       "========================",
       `Producto: ${form.producto} (${form.categoria})`,
       `Ruta: ${form.origen} → ${form.destino}`,
-      `Modo: ${MODOS.find((m) => m.value === form.modo)?.label}`,
+      `Modo: ${modoLabel}`,
       `Peso: ${form.peso} kg`,
+      form.cargaPeligrosa ? "⚠ Carga peligrosa" : "",
+      form.requiereRefrigeracion ? "❄ Requiere refrigeración" : "",
       "",
       "DESGLOSE DE COSTOS (USD)",
       "------------------------",
@@ -266,24 +294,22 @@ function Resultados({ result, form, onReset }) {
       `TOTAL: USD ${result.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`,
       "",
       `Tiempo estimado: ${result.diasMinimo}–${result.diasMaximo} días`,
-      `Llegada estimada: ${result.fechaLlegadaEstimada}`,
+      `Llegada estimada: ${result.fechaLlegada || result.fechaLlegadaEstimada}`,
+      `Incoterm recomendado: ${result.incoterm || "—"}`,
       "",
       `Notas: ${result.notas}`,
       "",
       "* Estimaciones orientativas. Consultá con un despachante para valores exactos.",
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cotizacion-conexporta-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    ].filter((l) => l !== undefined);
+
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Badge */}
       <div className="flex items-center gap-2">
         <CheckCircle size={18} className="text-green-400" />
         <span className="text-green-400 font-semibold text-sm">
@@ -298,9 +324,25 @@ function Resultados({ result, form, onReset }) {
           USD{" "}
           {result.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
         </div>
-        <div className="text-slate-400 text-sm mt-2">
-          {result.diasMinimo}–{result.diasMaximo} días · Llegada:{" "}
-          {result.fechaLlegadaEstimada}
+        <div className="grid grid-cols-3 gap-3 mt-4 text-center">
+          <div>
+            <div className="text-white font-semibold text-sm">
+              {result.diasMinimo}–{result.diasMaximo} días
+            </div>
+            <div className="text-slate-500 text-xs">Tránsito</div>
+          </div>
+          <div>
+            <div className="text-white font-semibold text-sm">
+              {result.fechaLlegada || result.fechaLlegadaEstimada}
+            </div>
+            <div className="text-slate-500 text-xs">Llegada est.</div>
+          </div>
+          <div>
+            <div className="text-yellow-400 font-semibold text-sm">
+              {result.incoterm || "FOB"}
+            </div>
+            <div className="text-slate-500 text-xs">Incoterm rec.</div>
+          </div>
         </div>
       </div>
 
@@ -309,11 +351,11 @@ function Resultados({ result, form, onReset }) {
         <div className="text-white font-semibold mb-4 text-sm">
           Desglose de costos
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 mb-4">
           {items.map((item) => (
             <div
               key={item.label}
-              className="flex justify-between items-center py-2 border-b border-white/5 last:border-0"
+              className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0"
             >
               <span className="text-slate-400 text-sm">{item.label}</span>
               <span className="text-white font-medium text-sm">
@@ -324,8 +366,8 @@ function Resultados({ result, form, onReset }) {
               </span>
             </div>
           ))}
-          <div className="flex justify-between items-center pt-3 mt-1">
-            <span className="text-white font-bold">Total estimado</span>
+          <div className="flex justify-between items-center pt-3">
+            <span className="text-white font-bold">Total</span>
             <span className="text-green-400 font-extrabold text-lg">
               USD{" "}
               {result.total.toLocaleString("es-AR", {
@@ -336,21 +378,19 @@ function Resultados({ result, form, onReset }) {
         </div>
       </div>
 
-      {/* Donut chart */}
+      {/* Bar chart */}
       <div className="glass-card p-5">
         <div className="text-white font-semibold mb-4 text-sm">
           Distribución de costos
         </div>
-        <div className="max-w-xs mx-auto">
-          <Doughnut data={chartData} options={chartOptions} />
-        </div>
+        <BarChart items={items} />
       </div>
 
       {/* Notas */}
       {result.notas && (
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-          <div className="text-blue-300 text-xs font-medium mb-1">
-            Observaciones
+          <div className="text-blue-300 text-xs font-semibold mb-1">
+            Notas del especialista
           </div>
           <p className="text-slate-300 text-sm leading-relaxed">
             {result.notas}
@@ -361,17 +401,22 @@ function Resultados({ result, form, onReset }) {
       {/* Acciones */}
       <div className="flex gap-3">
         <button
-          onClick={downloadResumen}
+          onClick={copiarResumen}
           className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 transition-colors text-sm font-medium"
         >
-          <Download size={16} />
-          Descargar detalle
+          {copied ? (
+            <CheckCircle size={16} className="text-green-400" />
+          ) : (
+            <Copy size={16} />
+          )}
+          {copied ? "¡Copiado!" : "Copiar resumen"}
         </button>
         <button
           onClick={onReset}
           className="flex-1 btn-gold py-3 rounded-xl text-sm flex items-center justify-center gap-2"
         >
-          Nueva cotización
+          <RefreshCw size={16} />
+          Nueva consulta
         </button>
       </div>
 
@@ -399,7 +444,6 @@ export default function CalculadoraPage() {
   function validStep1() {
     return form.origen && form.destino && form.modo;
   }
-
   function validStep2() {
     return form.producto && form.peso && Number(form.peso) > 0;
   }
@@ -434,33 +478,35 @@ export default function CalculadoraPage() {
     setError("");
   }
 
-  // Input style helper
   const inputCls =
     "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-yellow-400/50";
   const selectCls = inputCls + " cursor-pointer";
+  const checkCls =
+    "w-4 h-4 rounded border-white/30 bg-white/10 accent-yellow-400 cursor-pointer";
 
   return (
     <div className="min-h-screen" style={{ background: "var(--navy-900)" }}>
-      {/* Navbar sencillo */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 navbar-scrolled px-4 h-16 flex items-center justify-between max-w-7xl mx-auto w-full"
+        className="fixed top-0 left-0 right-0 z-50 navbar-scrolled px-4 h-16 flex items-center max-w-7xl mx-auto w-full"
         style={{ position: "fixed" }}
       >
-        <a href="/" className="flex items-center gap-2 text-white font-bold">
-          <div
-            className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-xs"
-            style={{ color: "#0a1628" }}
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2 text-white font-bold">
+            <div
+              className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-xs"
+              style={{ color: "#0a1628" }}
+            >
+              CE
+            </div>
+            ConExporta <span className="gold-text ml-1">AI</span>
+          </a>
+          <a
+            href="/"
+            className="text-slate-400 hover:text-yellow-400 text-sm transition-colors"
           >
-            CE
-          </div>
-          ConExporta <span className="gold-text">AI</span>
-        </a>
-        <a
-          href="/"
-          className="text-slate-400 hover:text-yellow-400 text-sm transition-colors"
-        >
-          ← Volver
-        </a>
+            ← Volver
+          </a>
+        </div>
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 pt-28 pb-16">
@@ -469,19 +515,18 @@ export default function CalculadoraPage() {
             Calculadora de <span className="gold-text">Envíos</span>
           </h1>
           <p className="text-slate-400">
-            Estimación de costos logísticos internacionales desde Argentina
+            Estimación de costos logísticos internacionales desde Argentina —
+            powered by Claude AI
           </p>
         </div>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
-          {/* Panel lateral */}
           <ProductPanel form={form} />
 
-          {/* Panel principal */}
           <div className="glass-card p-6 sm:p-8">
             <Stepper step={step} />
 
-            {/* ── STEP 1 ── */}
+            {/* STEP 1 */}
             {step === 1 && (
               <div className="flex flex-col gap-5">
                 <h2 className="text-white font-semibold text-lg">
@@ -564,7 +609,7 @@ export default function CalculadoraPage() {
               </div>
             )}
 
-            {/* ── STEP 2 ── */}
+            {/* STEP 2 */}
             {step === 2 && (
               <div className="flex flex-col gap-5">
                 <h2 className="text-white font-semibold text-lg">
@@ -638,6 +683,36 @@ export default function CalculadoraPage() {
                   </div>
                 </div>
 
+                {/* Checkboxes */}
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={form.cargaPeligrosa}
+                      onChange={(e) =>
+                        setField("cargaPeligrosa", e.target.checked)
+                      }
+                      className={checkCls}
+                    />
+                    <span className="text-slate-300 text-sm group-hover:text-white transition-colors">
+                      Carga peligrosa (materiales inflamables, tóxicos, etc.)
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={form.requiereRefrigeracion}
+                      onChange={(e) =>
+                        setField("requiereRefrigeracion", e.target.checked)
+                      }
+                      className={checkCls}
+                    />
+                    <span className="text-slate-300 text-sm group-hover:text-white transition-colors">
+                      Requiere refrigeración (cadena de frío)
+                    </span>
+                  </label>
+                </div>
+
                 {error && (
                   <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
                     <AlertCircle
@@ -662,8 +737,8 @@ export default function CalculadoraPage() {
                   >
                     {loading ? (
                       <>
-                        <Loader2 size={18} className="animate-spin" />{" "}
-                        Calculando...
+                        <Loader2 size={18} className="animate-spin" /> Claude
+                        está calculando tu envío...
                       </>
                     ) : (
                       "Calcular costo estimado"
@@ -673,7 +748,7 @@ export default function CalculadoraPage() {
               </div>
             )}
 
-            {/* ── STEP 3 ── */}
+            {/* STEP 3 */}
             {step === 3 && result && (
               <Resultados result={result} form={form} onReset={reset} />
             )}

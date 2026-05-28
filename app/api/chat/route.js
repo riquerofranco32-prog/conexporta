@@ -83,7 +83,7 @@ export async function POST(request) {
         ? [{ role: "user", content: sanitized[0].content }]
         : sanitized;
 
-    const model = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
+    const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
     const systemPrompt =
       mode === "calculator" ? CALCULATOR_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
 
