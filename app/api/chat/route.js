@@ -27,8 +27,13 @@ Tu rol es ayudar con:
 Respondé siempre en español argentino, de forma clara, profesional y empática. Usá ejemplos prácticos argentinos.
 Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente y redirigí al usuario.`;
 
-    const systemPrompt =
-      mode === "calculator" ? messages[0].content : chatSystemPrompt;
+    const model = process.env.GROK_MODEL || "grok-3";
+
+    const systemContent =
+      mode === "calculator"
+        ? "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown."
+        : chatSystemPrompt;
+
     const userMessages =
       mode === "calculator"
         ? [{ role: "user", content: messages[0].content }]
@@ -41,26 +46,17 @@ Si la consulta está fuera de tu área (comercio exterior), indicalo amablemente
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-3-latest",
-        messages: [
-          {
-            role: "system",
-            content:
-              mode === "calculator"
-                ? "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown."
-                : chatSystemPrompt,
-          },
-          ...userMessages,
-        ],
+        model,
+        messages: [{ role: "system", content: systemContent }, ...userMessages],
         temperature: mode === "calculator" ? 0.3 : 0.7,
         max_tokens: mode === "calculator" ? 512 : 1024,
       }),
     });
 
     if (!response.ok) {
-      const err = await response.text();
+      const errorText = await response.text();
       return Response.json(
-        { error: `Error de API: ${response.status}` },
+        { error: `Error de API (${response.status}): ${errorText}` },
         { status: 502 },
       );
     }

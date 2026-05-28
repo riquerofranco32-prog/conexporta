@@ -20,7 +20,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  ExternalLink,
 } from "lucide-react";
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
@@ -51,7 +50,10 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-navy-900 text-sm">
+            <div
+              className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-sm"
+              style={{ color: "#0a1628" }}
+            >
               CE
             </div>
             <span className="font-bold text-white text-lg tracking-tight">
@@ -226,7 +228,10 @@ function Chatbot() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+    return () => clearTimeout(timer);
   }, [messages, loading]);
 
   async function sendMessage(text) {
@@ -439,7 +444,12 @@ function Calculadora() {
 
   async function calcular(e) {
     e.preventDefault();
-    if (!form.destino || !form.producto || !form.peso) {
+    if (
+      !form.destino ||
+      !form.producto ||
+      !form.peso ||
+      Number(form.peso) <= 0
+    ) {
       setError("Completá destino, producto y peso para continuar.");
       return;
     }
@@ -475,15 +485,21 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ content: prompt }],
+          messages: [{ role: "user", content: prompt }],
           mode: "calculator",
         }),
       });
       const data = await res.json();
       const raw = data.reply || "";
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Respuesta inesperada del asistente.");
-      setResult(JSON.parse(jsonMatch[0]));
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const jsonMatch = raw.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/);
+        if (!jsonMatch) throw new Error("Respuesta inesperada del asistente.");
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+      setResult(parsed);
     } catch (err) {
       setError("No se pudo calcular el envío. Intentá de nuevo.");
     } finally {
@@ -815,7 +831,13 @@ function GestionFirmas() {
 
   function agregarEmpresa(e) {
     e.preventDefault();
-    if (!form.razonSocial || !form.cuit || !form.contacto || !form.email)
+    if (
+      !form.razonSocial ||
+      !form.cuit ||
+      !form.contacto ||
+      !form.email ||
+      !form.email.includes("@")
+    )
       return;
     setEmpresas((prev) => [...prev, { ...form, id: nextId }]);
     setNextId((n) => n + 1);
@@ -1128,8 +1150,8 @@ function Footer() {
           xAI · Deployado en Vercel
         </p>
         <p className="text-slate-600 text-xs">
-          © {new Date().getFullYear()} ConExporta — Las estimaciones son
-          orientativas y no constituyen asesoramiento profesional.
+          © 2025 ConExporta — Las estimaciones son orientativas y no constituyen
+          asesoramiento profesional.
         </p>
       </div>
     </footer>
