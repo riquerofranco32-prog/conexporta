@@ -77,7 +77,7 @@ export async function POST(request) {
           : m.content,
     }));
 
-    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+    const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
     const systemPrompt =
       mode === "calculator" ? CALCULATOR_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
 
