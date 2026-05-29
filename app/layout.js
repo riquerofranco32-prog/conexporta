@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ScrollRestorer } from "./scroll-restorer";
+import { AnimationInit } from "./components/AnimationInit";
 
 export const metadata = {
   title: "ConExporta AI — Asistente de Comercio Exterior Argentino",
@@ -76,6 +77,7 @@ export default function RootLayout({ children }) {
         </div>
         <script dangerouslySetInnerHTML={{ __html: LOADER_SCRIPT }} />
         <ScrollRestorer />
+        <AnimationInit />
         {children}
       </body>
     </html>

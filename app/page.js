@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { FadeIn } from "./components/FadeIn";
 import {
   MessageCircle,
   Calculator,
@@ -62,7 +61,7 @@ function useScrollSetup() {
 function useScrollReveal() {
   useEffect(() => {
     const selectors =
-      ".fade-in-up, .fade-in-left, .fade-in-right, .fade-in-scale, .step-line, .section-title-underline, .reveal";
+      ".animate-on-scroll, .fade-in-left, .fade-in-right, .fade-in-scale, .step-line, .section-title-underline, .reveal";
     const elements = document.querySelectorAll(selectors);
     if (!elements.length) return;
 
@@ -332,7 +331,7 @@ function StatCard({ value, label }) {
   const match = value.match(/^(\d+)(.*)$/);
   const { count, ref } = useCountUp(match ? Number(match[1]) : 0);
   return (
-    <div ref={ref} className="glass-card p-4 fade-in-up text-center">
+    <div ref={ref} className="glass-card p-4 animate-on-scroll text-center">
       <div className="text-2xl font-bold gold-text">
         {match ? `${count}${match[2]}` : value}
       </div>
@@ -502,10 +501,7 @@ function Hero() {
               </span>
             </div>
 
-            <h1
-              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight"
-              style={{ animation: "fadeInUp 0.6s ease 0.15s both" }}
-            >
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight animate-on-scroll">
               Tu consultor de{" "}
               <span className="gold-text-animated">comercio exterior</span>
               <br />
@@ -513,8 +509,8 @@ function Hero() {
             </h1>
 
             <p
-              className="text-slate-300 text-lg mb-8 max-w-lg leading-relaxed mx-auto lg:mx-0"
-              style={{ animation: "fadeInUp 0.6s ease 0.3s both" }}
+              className="text-slate-300 text-lg mb-8 max-w-lg leading-relaxed mx-auto lg:mx-0 animate-on-scroll"
+              style={{ transitionDelay: "100ms" }}
             >
               Resolvé tus dudas sobre{" "}
               <span className="text-yellow-400 font-semibold">{twDisplay}</span>
@@ -523,8 +519,8 @@ function Hero() {
             </p>
 
             <div
-              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-3"
-              style={{ animation: "fadeInUp 0.5s ease 0.45s both" }}
+              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-3 animate-on-scroll"
+              style={{ transitionDelay: "180ms" }}
             >
               <a
                 href="#chatbot"
@@ -541,16 +537,16 @@ function Hero() {
             </div>
 
             <p
-              className="text-slate-500 text-sm mb-8 text-center lg:text-left"
-              style={{ animation: "fadeInUp 0.5s ease 0.45s both" }}
+              className="text-slate-500 text-sm mb-8 text-center lg:text-left animate-on-scroll"
+              style={{ transitionDelay: "180ms" }}
             >
               +200 consultas respondidas · Documentación aduanera · Incoterms
               2020
             </p>
 
             <div
-              className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-              style={{ animation: "fadeInUp 0.5s ease 0.6s both" }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-on-scroll"
+              style={{ transitionDelay: "260ms" }}
             >
               {stats.map((s) => (
                 <StatCard key={s.label} value={s.value} label={s.label} />
@@ -654,12 +650,12 @@ function PorQueConExporta() {
     <section className="py-20 px-4 bg-white/3">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
             Todo lo que necesitás para{" "}
             <span className="gold-text-animated">exportar e importar</span>
           </h2>
           <p
-            className="text-slate-400 max-w-xl mx-auto fade-in-up"
+            className="text-slate-400 max-w-xl mx-auto animate-on-scroll"
             style={{ transitionDelay: "0.1s" }}
           >
             ConExporta AI integra múltiples herramientas especializadas en una
@@ -858,7 +854,7 @@ function Chatbot() {
     <section id="chatbot" className="py-20 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
             Asistente de{" "}
             <span className="gold-text-animated">Comercio Exterior</span>
           </h2>
@@ -1679,7 +1675,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
     <section id="calculadora" className="py-20 px-4 bg-white/5">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
             Calculadora de <span className="gold-text-animated">Envíos</span>
           </h2>
           <p className="text-slate-400">
@@ -2400,7 +2396,7 @@ function GestionFirmas() {
     <section id="gestion" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
             Gestión de <span className="gold-text">Firmas</span>
           </h2>
           <p className="text-slate-400">
@@ -2647,17 +2643,16 @@ function Contacto() {
   return (
     <section id="contacto" className="py-20 px-4 bg-white/5">
       <div className="max-w-4xl mx-auto text-center">
-        <FadeIn>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
-            Consultorio <span className="gold-text">ConExporta</span>
-          </h2>
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <p className="text-slate-400 mb-12">
-            Para consultas complejas o asesoramiento personalizado, contactá a
-            nuestros especialistas.
-          </p>
-        </FadeIn>
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
+          Consultorio <span className="gold-text">ConExporta</span>
+        </h2>
+        <p
+          className="text-slate-400 mb-12 animate-on-scroll"
+          style={{ transitionDelay: "80ms" }}
+        >
+          Para consultas complejas o asesoramiento personalizado, contactá a
+          nuestros especialistas.
+        </p>
 
         <div className="grid sm:grid-cols-3 gap-6">
           {[
@@ -2683,25 +2678,27 @@ function Contacto() {
               sub: "Mendoza, Argentina",
             },
           ].map((c, i) => (
-            <FadeIn key={c.title} delay={i * 0.12}>
-              <div className="glass-card p-6 flex flex-col items-center gap-3 h-full hover:-translate-y-1 transition-transform duration-300">
-                <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
-                  {c.icon}
-                </div>
-                <div className="font-semibold text-white">{c.title}</div>
-                {c.href ? (
-                  <a
-                    href={c.href}
-                    className="text-slate-300 text-sm hover:text-yellow-400 transition-colors"
-                  >
-                    {c.value}
-                  </a>
-                ) : (
-                  <div className="text-slate-300 text-sm">{c.value}</div>
-                )}
-                <div className="text-slate-500 text-xs">{c.sub}</div>
+            <div
+              key={c.title}
+              className="glass-card p-6 flex flex-col items-center gap-3 animate-on-scroll"
+              style={{ transitionDelay: `${(i + 1) * 80}ms` }}
+            >
+              <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
+                {c.icon}
               </div>
-            </FadeIn>
+              <div className="font-semibold text-white">{c.title}</div>
+              {c.href ? (
+                <a
+                  href={c.href}
+                  className="text-slate-300 text-sm hover:text-yellow-400 transition-colors"
+                >
+                  {c.value}
+                </a>
+              ) : (
+                <div className="text-slate-300 text-sm">{c.value}</div>
+              )}
+              <div className="text-slate-500 text-xs">{c.sub}</div>
+            </div>
           ))}
         </div>
       </div>
@@ -2824,7 +2821,7 @@ function ComoFunciona() {
     <section id="como-funciona" className="py-20 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 animate-on-scroll">
             ¿Cómo <span className="gold-text">funciona</span>?
           </h2>
           <p className="text-slate-400">
@@ -2837,7 +2834,7 @@ function ComoFunciona() {
             <div key={paso.numero} className="flex md:contents">
               {/* Card */}
               <div
-                className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1 fade-in-up"
+                className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1 animate-on-scroll"
                 style={{ transitionDelay: `${index * 0.18}s` }}
               >
                 {/* Step number with ring */}
