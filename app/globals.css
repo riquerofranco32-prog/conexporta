@@ -873,7 +873,16 @@ section[id],
   scroll-margin-top: 80px;
 }
 
-/* ── Focus ring accesible en inputs (consistente con el acento dorado) ─────── */
+/* ── Focus ring accesible global (AA-compliant, acento dorado) ─────────────── */
+
+*:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+*:focus:not(:focus-visible) {
+  outline: none;
+}
 
 input:focus-visible,
 select:focus-visible,

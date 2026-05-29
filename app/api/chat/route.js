@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit } from "@/app/lib/rateLimit";
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_CHARS = 4000;
@@ -27,6 +28,14 @@ const CALCULATOR_SYSTEM_PROMPT =
   "Sos un experto en costos logísticos argentinos. Respondé SOLO con JSON válido sin texto extra ni markdown.";
 
 export async function POST(request) {
+  if (!checkRateLimit(request)) {
+    return Response.json(
+      {
+        error: "Demasiadas solicitudes. Esperá un minuto e intentá de nuevo.",
+      },
+      { status: 429 },
+    );
+  }
   try {
     const contentType = request.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {

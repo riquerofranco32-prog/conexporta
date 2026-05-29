@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit } from "@/app/lib/rateLimit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -8,6 +9,12 @@ y HS (Harmonized System) más preciso para productos de exportación/importació
 Respondé SOLO con un objeto JSON válido, sin texto adicional, sin markdown, sin backticks.`;
 
 export async function POST(request) {
+  if (!checkRateLimit(request)) {
+    return Response.json(
+      { error: "Demasiadas solicitudes. Esperá un minuto e intentá de nuevo." },
+      { status: 429 },
+    );
+  }
   try {
     const contentType = request.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {

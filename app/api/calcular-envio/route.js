@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit } from "@/app/lib/rateLimit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -6,6 +7,12 @@ const SYSTEM =
   "Sos un experto en costos logísticos internacionales con foco en Argentina. Respondé SOLO con JSON válido, sin texto extra ni markdown.";
 
 export async function POST(request) {
+  if (!checkRateLimit(request)) {
+    return Response.json(
+      { error: "Demasiadas solicitudes. Esperá un minuto e intentá de nuevo." },
+      { status: 429 },
+    );
+  }
   try {
     const contentType = request.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {

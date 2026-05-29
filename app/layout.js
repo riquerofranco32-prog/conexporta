@@ -1,4 +1,5 @@
 import "./globals.css";
+import Script from "next/script";
 import { ScrollRestorer } from "./scroll-restorer";
 import { AnimationInit } from "./components/AnimationInit";
 
@@ -6,8 +7,16 @@ export const metadata = {
   title: "ConExporta AI — Asistente de Comercio Exterior Argentino",
   description:
     "Consultá sobre exportaciones, importaciones, Incoterms y documentación aduanera desde Argentina. Potenciado por Claude AI.",
-  keywords:
-    "comercio exterior, exportación, importación, Argentina, Incoterms, aduana, AFIP, SENASA",
+  keywords: [
+    "comercio exterior",
+    "exportación argentina",
+    "importación",
+    "Incoterms",
+    "aduana",
+    "AFIP",
+    "SENASA",
+  ],
+  authors: [{ name: "ConExporta · UTN San Rafael" }],
   metadataBase: new URL("https://conexporta.vercel.app"),
   openGraph: {
     title: "ConExporta AI — Asistente de Comercio Exterior Argentino",
@@ -18,14 +27,20 @@ export const metadata = {
     locale: "es_AR",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "ConExporta AI",
+    description:
+      "Tu consultor de comercio exterior argentino, disponible 24/7.",
+  },
+  robots: { index: true, follow: true },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
 };
 
-// Estilos críticos inline para el primer paint — usa los colores reales del
-// proyecto (#0a1628 navy / #f5c842 gold) para evitar flash al desvanecer.
+// Estilos críticos inline para el primer paint
 const CRITICAL_CSS = `
 #app-loader{position:fixed;inset:0;z-index:9999;background:#0a1628;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
 #app-loader .loader-logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#f5c842,#d4a017);color:#0a1628;font-weight:900;font-size:1.25rem;display:flex;align-items:center;justify-content:center;animation:loaderPulse 1s ease-in-out infinite}
@@ -36,8 +51,6 @@ const CRITICAL_CSS = `
 @media (prefers-reduced-motion:reduce){#app-loader .loader-logo{animation:none}#app-loader .loader-fill{animation:none;width:100%}}
 `;
 
-// Oculta el loader cuando la página terminó de cargar, con un fallback por si
-// el evento 'load' no dispara. Inline para correr lo antes posible.
 const LOADER_SCRIPT = `
 (function(){
   function hide(){
@@ -69,6 +82,14 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        {/* Skip link para navegación por teclado */}
+        <a
+          href="#chatbot"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-yellow-400 focus:text-black focus:rounded-lg focus:font-semibold focus:shadow-lg"
+        >
+          Ir al asistente IA
+        </a>
+
         <div id="app-loader" aria-hidden="true">
           <div className="loader-logo">CE</div>
           <div className="loader-bar">
@@ -79,7 +100,7 @@ export default function RootLayout({ children }) {
         <ScrollRestorer />
         <AnimationInit />
         {children}
-        <script src="/animations.js" defer />
+        <Script src="/anim.js" strategy="afterInteractive" />
       </body>
     </html>
   );
