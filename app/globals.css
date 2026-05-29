@@ -864,3 +864,127 @@ body {
     overflow-x: visible;
   }
 }
+
+/* ── Anchor offset: evita que el navbar fijo (h-16 = 64px) tape el inicio ──── */
+/* de la sección al navegar con links #ancla. */
+
+section[id],
+[id="calculadora-form"] {
+  scroll-margin-top: 80px;
+}
+
+/* ── Focus ring accesible en inputs (consistente con el acento dorado) ─────── */
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgba(245, 200, 66, 0.15);
+}
+
+/* ── Navbar desktop: subrayado animado desde la izquierda en hover ─────────── */
+
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0;
+  height: 2px;
+  background: var(--gold-400);
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+.nav-link:hover::after,
+.nav-link.is-active::after {
+  width: 100%;
+}
+
+/* ── Touch targets cómodos en pantallas táctiles ───────────────────────────── */
+
+@media (hover: none) {
+  button {
+    min-height: 44px;
+  }
+}
+
+/* ── Hero blob float ─────────────────────────────────────────────────────────── */
+
+@keyframes blob-float {
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.02);
+  }
+}
+.blob {
+  animation: blob-float 8s ease-in-out infinite;
+}
+.blob-2 {
+  animation: blob-float 8s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────────── */
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton-value {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.11) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  height: 1em;
+  width: 60%;
+  display: inline-block;
+}
+
+/* ── Respeta prefers-reduced-motion: corta las animaciones infinitas que ───── */
+/* generan jank/lag continuo en mobile y mejora accesibilidad. ─────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .marquee-track,
+  .spin-slow,
+  .spin-slow-reverse,
+  .hero-glow,
+  .hero-glow-3,
+  .hero-dot-grid,
+  .float-elem-1,
+  .float-elem-2,
+  .float-elem-3,
+  .blob,
+  .blob-2,
+  .btn-gold,
+  .gold-text-animated,
+  .scroll-progress-bar,
+  .typing-dot {
+    animation: none !important;
+  }
+  /* Mantené legible el texto dorado animado al desactivar su gradiente móvil */
+  .gold-text-animated {
+    background-position: 0 0;
+  }
+}

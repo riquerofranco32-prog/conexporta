@@ -14,6 +14,7 @@ import {
   AlertCircle,
   RefreshCw,
   TrendingUp,
+  Download,
 } from "lucide-react";
 
 // ── Tipo de cambio USD→ARS ───────────────────────────────────────────────────
@@ -113,6 +114,21 @@ const INITIAL_FORM = {
   alto: "",
   cargaPeligrosa: false,
   requiereRefrigeracion: false,
+};
+
+const DEFAULT_RESULT = {
+  costoFlete: null,
+  seguro: null,
+  gastosDestino: null,
+  derechosImportacion: null,
+  iva: null,
+  total: null,
+  diasMinimo: null,
+  diasMaximo: null,
+  fechaLlegada: null,
+  fechaLlegadaEstimada: null,
+  incoterm: null,
+  notas: null,
 };
 
 // ── CSS Bar Chart ────────────────────────────────────────────────────────────
@@ -304,6 +320,109 @@ function Resultados({ result, form, onReset, arsRate }) {
   const modoLabel =
     MODOS.find((m) => m.value === form.modo)?.label || form.modo;
 
+  async function downloadPDF() {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    const fecha = new Date().toLocaleDateString("es-AR");
+    const modoLabel =
+      MODOS.find((m) => m.value === form.modo)?.label || form.modo;
+
+    function fmtPDF(val) {
+      if (val === null || val === undefined) return "--";
+      return `USD ${Number(val).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+    }
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("ConExporta - Estimacion de Costos", 20, 25);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Generado el ${fecha}`, 20, 33);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 37, 190, 37);
+
+    // Datos del envío
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Datos del envio", 20, 47);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Origen: ${form.origen || "--"}`, 20, 56);
+    doc.text(`Destino: ${form.destino || "--"}`, 20, 63);
+    doc.text(
+      `Producto: ${form.producto || "--"} (${form.categoria || ""})`,
+      20,
+      70,
+    );
+    doc.text(`Modo de transporte: ${modoLabel}`, 20, 77);
+    doc.text(
+      `Peso: ${form.peso ? `${Number(form.peso).toLocaleString()} kg` : "--"}`,
+      20,
+      84,
+    );
+    doc.line(20, 90, 190, 90);
+
+    // Costos
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Estimacion de costos", 20, 100);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Flete estimado: ${fmtPDF(result.costoFlete)}`, 20, 109);
+    doc.text(`Seguro de carga: ${fmtPDF(result.seguro)}`, 20, 116);
+    doc.text(`Gastos de destino: ${fmtPDF(result.gastosDestino)}`, 20, 123);
+    doc.text(
+      `Derechos de importacion: ${fmtPDF(result.derechosImportacion)}`,
+      20,
+      130,
+    );
+    doc.text(`IVA (21%): ${fmtPDF(result.iva)}`, 20, 137);
+    doc.text(
+      `Tiempo de transito: ${result.diasMinimo}-${result.diasMaximo} dias`,
+      20,
+      144,
+    );
+    doc.text(
+      `Llegada estimada: ${result.fechaLlegadaEstimada || "--"}`,
+      20,
+      151,
+    );
+    doc.text(`Incoterm recomendado: ${result.incoterm || "--"}`, 20, 158);
+
+    // Total destacado
+    doc.setFillColor(245, 245, 245);
+    doc.rect(18, 164, 174, 14, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`Total estimado: ${fmtPDF(result.total)}`, 22, 173);
+
+    // Notas
+    if (result.notas) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Notas del asistente", 20, 190);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(result.notas, 170);
+      doc.text(lines, 20, 199);
+    }
+
+    // Footer
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.text(
+      "Estimacion generada por ConExporta AI - Los valores son aproximados y pueden variar.",
+      20,
+      285,
+    );
+
+    doc.save(`conexporta-estimacion-${fecha.replace(/\//g, "-")}.pdf`);
+  }
+
   function copiarResumen() {
     const arsLine = arsRate
       ? `TOTAL en ARS: $ ${Math.round(result.total * arsRate).toLocaleString("es-AR")} (TC: $${Math.round(arsRate).toLocaleString("es-AR")}/USD)`
@@ -470,6 +589,13 @@ function Resultados({ result, form, onReset, arsRate }) {
       )}
 
       {/* Acciones */}
+      <button
+        onClick={downloadPDF}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/20 text-slate-300 hover:bg-white/5 transition-colors text-sm font-medium"
+      >
+        <Download size={16} />
+        Descargar PDF
+      </button>
       <div className="flex gap-3">
         <button
           onClick={copiarResumen}
@@ -499,12 +625,97 @@ function Resultados({ result, form, onReset, arsRate }) {
   );
 }
 
+// ── Vista previa siempre visible ─────────────────────────────────────────────
+
+function ResultadosPreview({ result, loading, hasResult }) {
+  function fmtUSD(val) {
+    if (val === null || val === undefined) return "--";
+    return `USD ${Number(val).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  }
+
+  const fields = [
+    {
+      label: "Flete estimado",
+      value: hasResult ? fmtUSD(result.costoFlete) : "--",
+    },
+    {
+      label: "Seguro de carga",
+      value: hasResult ? fmtUSD(result.seguro) : "--",
+    },
+    {
+      label: "Tiempo de tránsito",
+      value: hasResult
+        ? `${result.diasMinimo}–${result.diasMaximo} días`
+        : "--",
+    },
+    {
+      label: "Incoterm recomendado",
+      value: hasResult ? result.incoterm || "--" : "--",
+      accent: true,
+    },
+    {
+      label: "Total estimado",
+      value: hasResult ? fmtUSD(result.total) : "--",
+      isTotal: true,
+    },
+    { label: "Documentación requerida", value: "--" },
+    {
+      label: "Notas del asistente",
+      value: hasResult && result.notas ? result.notas : "--",
+      isNote: true,
+    },
+  ];
+
+  return (
+    <div
+      className={`glass-card p-5 sticky top-24${loading ? " is-loading" : ""}${hasResult ? " has-value" : ""}`}
+    >
+      <div className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+        Resultado estimado
+        {hasResult && <CheckCircle size={13} className="text-green-400" />}
+      </div>
+      <div className="flex flex-col divide-y divide-white/5">
+        {fields.map((field) => (
+          <div key={field.label} className="py-2.5 first:pt-0 last:pb-0">
+            <div className="text-slate-400 text-xs mb-1">{field.label}</div>
+            {loading ? (
+              <span className="skeleton-value" />
+            ) : (
+              <div
+                className={`text-sm font-semibold ${
+                  !hasResult
+                    ? "text-slate-600"
+                    : field.isTotal
+                      ? "text-green-400"
+                      : field.accent
+                        ? "text-yellow-400"
+                        : field.isNote
+                          ? "text-slate-300 font-normal text-xs leading-relaxed line-clamp-3"
+                          : "text-white"
+                }`}
+              >
+                {field.value}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {!hasResult && !loading && (
+        <p className="text-slate-600 text-xs text-center mt-4 leading-relaxed">
+          Completá el formulario para ver la estimación
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Página principal ─────────────────────────────────────────────────────────
 
 export default function CalculadoraPage() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(INITIAL_FORM);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(DEFAULT_RESULT);
+  const [hasResult, setHasResult] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -534,6 +745,7 @@ export default function CalculadoraPage() {
         return;
       }
       setResult(data);
+      setHasResult(true);
       setStep(3);
     } catch {
       setError("Error de conexión. Verificá tu internet e intentá de nuevo.");
@@ -545,7 +757,8 @@ export default function CalculadoraPage() {
   function reset() {
     setStep(1);
     setForm(INITIAL_FORM);
-    setResult(null);
+    setResult(DEFAULT_RESULT);
+    setHasResult(false);
     setError("");
   }
 
@@ -591,7 +804,7 @@ export default function CalculadoraPage() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
+        <div className="grid lg:grid-cols-[200px_1fr_260px] gap-6 items-start">
           <ProductPanel form={form} />
 
           <div className="glass-card p-6 sm:p-8">
@@ -820,10 +1033,16 @@ export default function CalculadoraPage() {
             )}
 
             {/* STEP 3 */}
-            {step === 3 && result && (
+            {step === 3 && hasResult && (
               <Resultados result={result} form={form} onReset={reset} />
             )}
           </div>
+
+          <ResultadosPreview
+            result={result}
+            loading={loading}
+            hasResult={hasResult}
+          />
         </div>
       </div>
     </div>

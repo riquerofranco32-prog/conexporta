@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { FadeIn } from "./components/FadeIn";
 import {
   MessageCircle,
   Calculator,
@@ -249,9 +250,9 @@ function Navbar() {
               <a
                 key={l.href}
                 href={l.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`nav-link text-sm font-medium transition-colors ${
                   activeSection === l.href.replace("#", "")
-                    ? "text-yellow-400"
+                    ? "is-active text-yellow-400"
                     : "text-slate-300 hover:text-yellow-400"
                 }`}
               >
@@ -454,6 +455,23 @@ function Hero() {
       <div className="hero-glow hero-glow-1" />
       <div className="hero-glow hero-glow-2" />
       <div className="hero-glow-3" />
+      {/* Animated blobs */}
+      <div
+        className="blob absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 70%)",
+          filter: "blur(60px)",
+        }}
+      />
+      <div
+        className="blob-2 absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 70%)",
+          filter: "blur(60px)",
+        }}
+      />
 
       {/* Spinning decorative rings */}
       <div className="absolute top-16 right-8 w-64 h-64 border border-yellow-400/8 rounded-full spin-slow hidden lg:block pointer-events-none" />
@@ -729,20 +747,34 @@ function nowTime() {
 const TRUNCATE_AT = 400;
 const PREVIEW_LEN = 200;
 
+const WELCOME_TEXT =
+  "¡Hola! Soy ConExporta AI, tu asistente de comercio exterior argentino. Podés consultarme sobre documentación aduanera, Incoterms, logística, organismos reguladores y mucho más. ¿En qué te puedo ayudar hoy?";
+
 function Chatbot() {
   const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content:
-        "¡Hola! Soy ConExporta AI, tu asistente de comercio exterior argentino. Podés consultarme sobre documentación aduanera, Incoterms, logística, organismos reguladores y mucho más. ¿En qué te puedo ayudar hoy?",
-      time: nowTime(),
-    },
+    { role: "assistant", content: WELCOME_TEXT, time: nowTime() },
   ]);
+  const [typedWelcome, setTypedWelcome] = useState("");
+  const [welcomeDone, setWelcomeDone] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(new Set());
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Typewriter for the initial welcome message
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setTypedWelcome(WELCOME_TEXT.slice(0, i));
+      if (i >= WELCOME_TEXT.length) {
+        clearInterval(id);
+        setWelcomeDone(true);
+      }
+    }, 25);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -871,10 +903,12 @@ function Chatbot() {
           <div className="h-96 overflow-y-auto p-5 flex flex-col gap-4">
             {messages.map((m, i) => {
               const isUser = m.role === "user";
+              const isWelcome = i === 0 && !isUser;
               const isLong = m.content.length > TRUNCATE_AT;
               const isExpanded = expanded.has(i);
-              const displayContent =
-                isLong && !isExpanded
+              const displayContent = isWelcome
+                ? typedWelcome
+                : isLong && !isExpanded
                   ? m.content.slice(0, PREVIEW_LEN) + "…"
                   : m.content;
 
@@ -892,7 +926,10 @@ function Chatbot() {
                     style={isUser ? { color: "#0a1628" } : {}}
                   >
                     {isUser ? displayContent : renderMarkdown(displayContent)}
-                    {isLong && (
+                    {isWelcome && !welcomeDone && (
+                      <span className="typewriter-cursor" />
+                    )}
+                    {isLong && !isWelcome && (
                       <button
                         onClick={() => toggleExpand(i)}
                         className={`mt-2 text-xs font-semibold underline ${isUser ? "text-navy-900/60" : "text-yellow-400/80"} hover:opacity-100`}
@@ -930,7 +967,7 @@ function Chatbot() {
                 key={q}
                 onClick={() => sendMessage(q)}
                 disabled={loading}
-                className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400/50 hover:translate-x-0.5 transition-all disabled:opacity-50 flex-shrink-0"
               >
                 {q}
               </button>
@@ -2594,6 +2631,11 @@ function GestionFirmas() {
           Los datos se almacenan en memoria. Para persistencia real integrá
           Supabase en versiones futuras.
         </p>
+        {process.env.NODE_ENV === "development" && (
+          <p className="text-xs text-yellow-500 mt-2 text-center">
+            ⚠ Datos de ejemplo — integrar Supabase para persistencia
+          </p>
+        )}
       </div>
     </section>
   );
@@ -2605,15 +2647,19 @@ function Contacto() {
   return (
     <section id="contacto" className="py-20 px-4 bg-white/5">
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
-          Consultorio <span className="gold-text">ConExporta</span>
-        </h2>
-        <p className="text-slate-400 mb-12 fade-in-up">
-          Para consultas complejas o asesoramiento personalizado, contactá a
-          nuestros especialistas.
-        </p>
+        <FadeIn>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
+            Consultorio <span className="gold-text">ConExporta</span>
+          </h2>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <p className="text-slate-400 mb-12">
+            Para consultas complejas o asesoramiento personalizado, contactá a
+            nuestros especialistas.
+          </p>
+        </FadeIn>
 
-        <div className="grid sm:grid-cols-3 gap-6 reveal-grid">
+        <div className="grid sm:grid-cols-3 gap-6">
           {[
             {
               icon: <Phone size={24} />,
@@ -2637,27 +2683,25 @@ function Contacto() {
               sub: "Mendoza, Argentina",
             },
           ].map((c, i) => (
-            <div
-              key={c.title}
-              className="glass-card p-6 flex flex-col items-center gap-3 reveal"
-              style={{ transitionDelay: `${i * 0.12}s` }}
-            >
-              <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
-                {c.icon}
+            <FadeIn key={c.title} delay={i * 0.12}>
+              <div className="glass-card p-6 flex flex-col items-center gap-3 h-full hover:-translate-y-1 transition-transform duration-300">
+                <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
+                  {c.icon}
+                </div>
+                <div className="font-semibold text-white">{c.title}</div>
+                {c.href ? (
+                  <a
+                    href={c.href}
+                    className="text-slate-300 text-sm hover:text-yellow-400 transition-colors"
+                  >
+                    {c.value}
+                  </a>
+                ) : (
+                  <div className="text-slate-300 text-sm">{c.value}</div>
+                )}
+                <div className="text-slate-500 text-xs">{c.sub}</div>
               </div>
-              <div className="font-semibold text-white">{c.title}</div>
-              {c.href ? (
-                <a
-                  href={c.href}
-                  className="text-slate-300 text-sm hover:text-yellow-400 transition-colors"
-                >
-                  {c.value}
-                </a>
-              ) : (
-                <div className="text-slate-300 text-sm">{c.value}</div>
-              )}
-              <div className="text-slate-500 text-xs">{c.sub}</div>
-            </div>
+            </FadeIn>
           ))}
         </div>
       </div>
@@ -2740,7 +2784,7 @@ function Footer() {
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           <p className="text-slate-600 text-xs">
-            © 2025 ConExporta · UTN San Rafael · Las estimaciones son
+            © 2026 ConExporta · UTN San Rafael · Las estimaciones son
             orientativas y no constituyen asesoramiento profesional.
           </p>
         </div>
