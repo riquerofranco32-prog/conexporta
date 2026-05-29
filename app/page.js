@@ -244,7 +244,7 @@ function Navbar() {
           </div>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="nav-ul hidden md:flex items-center gap-6">
             {links.map((l) => (
               <a
                 key={l.href}
@@ -331,7 +331,10 @@ function StatCard({ value, label }) {
   const match = value.match(/^(\d+)(.*)$/);
   const { count, ref } = useCountUp(match ? Number(match[1]) : 0);
   return (
-    <div ref={ref} className="glass-card p-4 animate-on-scroll text-center">
+    <div
+      ref={ref}
+      className="glass-card p-4 animate-on-scroll text-center badge-pulse relative pill-hover"
+    >
       <div className="text-2xl font-bold gold-text">
         {match ? `${count}${match[2]}` : value}
       </div>
@@ -524,7 +527,7 @@ function Hero() {
             >
               <a
                 href="#chatbot"
-                className="btn-gold px-8 py-3 rounded-xl text-base"
+                className="btn-gold btn-primary px-8 py-3 rounded-xl text-base"
               >
                 Hacer una consulta
               </a>
@@ -963,7 +966,7 @@ function Chatbot() {
                 key={q}
                 onClick={() => sendMessage(q)}
                 disabled={loading}
-                className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400/50 hover:translate-x-0.5 transition-all disabled:opacity-50 flex-shrink-0"
+                className="pill-hover whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400/50 transition-all disabled:opacity-50 flex-shrink-0"
               >
                 {q}
               </button>
@@ -2680,7 +2683,7 @@ function Contacto() {
           ].map((c, i) => (
             <div
               key={c.title}
-              className="glass-card p-6 flex flex-col items-center gap-3 animate-on-scroll"
+              className="glass-card card-hover p-6 flex flex-col items-center gap-3 animate-on-scroll"
               style={{ transitionDelay: `${(i + 1) * 80}ms` }}
             >
               <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">

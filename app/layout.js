@@ -79,6 +79,7 @@ export default function RootLayout({ children }) {
         <ScrollRestorer />
         <AnimationInit />
         {children}
+        <script src="/animations.js" defer />
       </body>
     </html>
   );

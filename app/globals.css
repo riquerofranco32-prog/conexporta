@@ -1028,3 +1028,215 @@ textarea:focus-visible {
     background-position: 0 0;
   }
 }
+
+/* ── Nuevas utilidades de animación ─────────────────────────────────────────── */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Fade-up on scroll (manejado por animations.js) */
+.fade-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Navbar sólido por scroll (manejado por animations.js) */
+.nav-solid {
+  background-color: rgba(15, 23, 42, 0.97) !important;
+  backdrop-filter: blur(14px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Texto con gradiente animado */
+.gradient-text {
+  background: linear-gradient(270deg, #fbbf24, #fb923c, #fbbf24);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s ease infinite;
+}
+
+/* Badge con anillo pulsante */
+.badge-pulse::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid #fbbf24;
+  animation: pulseRing 2s ease-out infinite;
+}
+
+/* Spinner inline */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin-slow 0.7s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* Cursor parpadeante alternativo */
+.tw-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #fbbf24;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.75s step-end infinite;
+}
+
+/* Skeleton shimmer */
+.skel {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  height: 1em;
+  display: inline-block;
+  min-width: 100px;
+}
+
+/* Card hover con elevación */
+.card-hover {
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-5px);
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Pill hover con deslizamiento lateral */
+.pill-hover {
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.pill-hover:hover {
+  transform: translateX(3px);
+  border-color: rgba(251, 191, 36, 0.4) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+
+/* Botón principal con efecto de escala */
+.btn-primary {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+.btn-primary:hover {
+  transform: scale(1.03);
+  filter: brightness(1.1);
+}
+
+/* Nav-ul: subrayado animado en links del menú */
+.nav-ul a {
+  position: relative;
+}
+.nav-ul a::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: #fbbf24;
+  transition: width 0.25s ease;
+}
+.nav-ul a:hover::after {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+  .gradient-text {
+    animation: none !important;
+    -webkit-text-fill-color: #fbbf24 !important;
+  }
+  .badge-pulse::before,
+  .tw-cursor,
+  .skel {
+    animation: none !important;
+  }
+}
