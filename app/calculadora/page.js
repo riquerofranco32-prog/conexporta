@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Anchor,
   Plane,
@@ -13,7 +13,27 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  TrendingUp,
 } from "lucide-react";
+
+// ── Tipo de cambio USD→ARS ───────────────────────────────────────────────────
+
+function useCurrency() {
+  const [arsRate, setArsRate] = useState(null);
+  const [rateError, setRateError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/currency")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.rate) setArsRate(d.rate);
+        else setRateError(true);
+      })
+      .catch(() => setRateError(true));
+  }, []);
+
+  return { arsRate, rateError };
+}
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 
@@ -257,8 +277,18 @@ function ProductPanel({ form }) {
 
 // ── Resultados ───────────────────────────────────────────────────────────────
 
-function Resultados({ result, form, onReset }) {
+function Resultados({ result, form, onReset, arsRate }) {
   const [copied, setCopied] = useState(false);
+  const [currency, setCurrency] = useState("USD");
+
+  const inARS = currency === "ARS" && arsRate;
+
+  function fmt(usdValue) {
+    if (inARS) {
+      return `$ ${Math.round(usdValue * arsRate).toLocaleString("es-AR")} ARS`;
+    }
+    return `USD ${usdValue.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  }
 
   const items = [
     {
@@ -275,6 +305,9 @@ function Resultados({ result, form, onReset }) {
     MODOS.find((m) => m.value === form.modo)?.label || form.modo;
 
   function copiarResumen() {
+    const arsLine = arsRate
+      ? `TOTAL en ARS: $ ${Math.round(result.total * arsRate).toLocaleString("es-AR")} (TC: $${Math.round(arsRate).toLocaleString("es-AR")}/USD)`
+      : "";
     const lines = [
       "COTIZACIÓN CONEXPORTA",
       "========================",
@@ -292,6 +325,7 @@ function Resultados({ result, form, onReset }) {
           `${i.label}: USD ${i.value.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`,
       ),
       `TOTAL: USD ${result.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`,
+      arsLine,
       "",
       `Tiempo estimado: ${result.diasMinimo}–${result.diasMaximo} días`,
       `Llegada estimada: ${result.fechaLlegada || result.fechaLlegadaEstimada}`,
@@ -300,7 +334,7 @@ function Resultados({ result, form, onReset }) {
       `Notas: ${result.notas}`,
       "",
       "* Estimaciones orientativas. Consultá con un despachante para valores exactos.",
-    ].filter((l) => l !== undefined);
+    ].filter(Boolean);
 
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
       setCopied(true);
@@ -310,20 +344,60 @@ function Resultados({ result, form, onReset }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-2">
-        <CheckCircle size={18} className="text-green-400" />
-        <span className="text-green-400 font-semibold text-sm">
-          Cotización actualizada
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle size={18} className="text-green-400" />
+          <span className="text-green-400 font-semibold text-sm">
+            Cotización actualizada
+          </span>
+        </div>
+        {/* Toggle USD/ARS */}
+        {arsRate && (
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            {["USD", "ARS"].map((c) => (
+              <button
+                key={c}
+                onClick={() => setCurrency(c)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  currency === c
+                    ? "bg-yellow-400 text-navy-900"
+                    : "text-slate-400 hover:text-white"
+                }`}
+                style={currency === c ? { color: "#0a1628" } : {}}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Badge tipo de cambio */}
+      {arsRate && (
+        <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+          <TrendingUp size={14} className="text-green-400 flex-shrink-0" />
+          <span className="text-green-300 text-xs">
+            <strong>
+              1 USD = ${Math.round(arsRate).toLocaleString("es-AR")} ARS
+            </strong>
+            {" · "}Cotización en tiempo real · FreeCurrencyAPI
+          </span>
+        </div>
+      )}
 
       {/* Total */}
       <div className="glass-card p-6 text-center">
         <div className="text-slate-400 text-sm mb-1">Costo total estimado</div>
         <div className="text-4xl font-extrabold text-green-400">
-          USD{" "}
-          {result.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+          {fmt(result.total)}
         </div>
+        {inARS && (
+          <div className="text-slate-500 text-sm mt-1">
+            USD{" "}
+            {result.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-3 mt-4 text-center">
           <div>
             <div className="text-white font-semibold text-sm">
@@ -359,10 +433,7 @@ function Resultados({ result, form, onReset }) {
             >
               <span className="text-slate-400 text-sm">{item.label}</span>
               <span className="text-white font-medium text-sm">
-                USD{" "}
-                {item.value.toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
+                {fmt(item.value)}
               </span>
             </div>
           ))}

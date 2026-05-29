@@ -38,17 +38,27 @@ function useScrollSetup() {
   useEffect(() => {
     // Segunda pasada post-hydration por si Next.js restauró después del layout
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-    const t = setTimeout(() => {
+    // Tercera pasada: algunos browsers restauran scroll después del hydration
+    const t1 = setTimeout(
+      () => window.scrollTo({ top: 0, left: 0, behavior: "instant" }),
+      80,
+    );
+    const t2 = setTimeout(() => {
       document.documentElement.classList.add("smooth-scroll");
-    }, 150);
-    return () => clearTimeout(t);
+    }, 250);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 }
 
-// IntersectionObserver para agregar clase .visible a elementos .fade-in-up
+// IntersectionObserver para agregar clase .visible a múltiples tipos de elementos
 function useScrollReveal() {
   useEffect(() => {
-    const elements = document.querySelectorAll(".fade-in-up");
+    const selectors =
+      ".fade-in-up, .fade-in-left, .fade-in-right, .fade-in-scale, .step-line, .section-title-underline";
+    const elements = document.querySelectorAll(selectors);
     if (!elements.length) return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -59,11 +69,33 @@ function useScrollReveal() {
           }
         });
       },
-      { threshold: 0.15 },
+      { threshold: 0.12 },
     );
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
+}
+
+function useScrollProgress() {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return progress;
+}
+
+function ScrollProgressBar() {
+  const progress = useScrollProgress();
+  return (
+    <div className="scroll-progress-bar" style={{ width: `${progress}%` }} />
+  );
 }
 
 // Typewriter: rota entre palabras con cursor parpadeante
@@ -234,7 +266,7 @@ function Navbar() {
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden pb-4 flex flex-col gap-3">
+          <div className="md:hidden pb-4 flex flex-col gap-3 mobile-menu-enter">
             {links.map((l) => (
               <a
                 key={l.href}
@@ -374,12 +406,28 @@ function Hero() {
       <div className="hero-dot-grid" />
       <div className="hero-glow hero-glow-1" />
       <div className="hero-glow hero-glow-2" />
+      <div className="hero-glow-3" />
+
+      {/* Spinning decorative rings */}
+      <div className="absolute top-16 right-8 w-64 h-64 border border-yellow-400/8 rounded-full spin-slow hidden lg:block pointer-events-none" />
+      <div className="absolute top-24 right-16 w-40 h-40 border border-yellow-400/5 rounded-full spin-slow-reverse hidden lg:block pointer-events-none" />
+
+      {/* Floating decorative icons */}
+      <div className="absolute top-36 right-72 float-elem-1 hidden xl:block pointer-events-none opacity-20">
+        <Anchor size={40} className="text-yellow-400" />
+      </div>
+      <div className="absolute bottom-48 right-48 float-elem-2 hidden xl:block pointer-events-none opacity-15">
+        <Plane size={32} className="text-yellow-300" />
+      </div>
+      <div className="absolute top-1/2 right-1/3 float-elem-3 hidden xl:block pointer-events-none opacity-10">
+        <Package size={28} className="text-yellow-400" />
+      </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left: text + CTAs */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse">
+            <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse hero-badge">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               <span className="text-yellow-400 text-sm font-medium">
                 ✦ Consultorio de Comercio Exterior · UTN Rosario
@@ -388,7 +436,7 @@ function Hero() {
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight">
               Tu consultor de{" "}
-              <span className="gold-text">comercio exterior</span>
+              <span className="gold-text-animated">comercio exterior</span>
               <br />
               disponible siempre
             </h1>
@@ -474,6 +522,93 @@ function FeaturesBar() {
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── Por qué ConExporta ───────────────────────────────────────────────────────
+
+function PorQueConExporta() {
+  const features = [
+    {
+      icon: <MessageCircle size={26} />,
+      title: "IA Especializada",
+      desc: "Entrenada con contexto de comercio exterior argentino: AFIP, SENASA, INAL y más.",
+      color: "from-yellow-400/20 to-yellow-600/5",
+    },
+    {
+      icon: <Calculator size={26} />,
+      title: "Calculadora de Fletes",
+      desc: "Estimaciones de costos logísticos por vía marítima, aérea y terrestre en segundos.",
+      color: "from-blue-400/20 to-blue-600/5",
+    },
+    {
+      icon: <Globe size={26} />,
+      title: "Incoterms 2020",
+      desc: "Explicaciones claras de todos los Incoterms con ejemplos prácticos para Argentina.",
+      color: "from-green-400/20 to-green-600/5",
+    },
+    {
+      icon: <FileText size={26} />,
+      title: "Documentación",
+      desc: "Guías paso a paso para DJVE, factura comercial, packing list y certificados.",
+      color: "from-purple-400/20 to-purple-600/5",
+    },
+    {
+      icon: <Building2 size={26} />,
+      title: "Organismos Oficiales",
+      desc: "Información actualizada sobre trámites en AFIP, SENASA, INAL, ANMAT y aduanas.",
+      color: "from-orange-400/20 to-orange-600/5",
+    },
+    {
+      icon: <Truck size={26} />,
+      title: "Logística Integral",
+      desc: "Puertos, rutas, forwarders y tiempos de tránsito para todas las regiones del mundo.",
+      color: "from-red-400/15 to-red-600/5",
+    },
+  ];
+
+  return (
+    <section className="py-20 px-4 bg-white/3">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
+            Todo lo que necesitás para{" "}
+            <span className="gold-text-animated">exportar e importar</span>
+          </h2>
+          <p
+            className="text-slate-400 max-w-xl mx-auto fade-in-up"
+            style={{ transitionDelay: "0.1s" }}
+          >
+            ConExporta AI integra múltiples herramientas especializadas en una
+            sola plataforma.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {features.map((f, i) => (
+            <div
+              key={f.title}
+              className="feature-grid-card p-6 flex flex-col gap-4 fade-in-scale"
+              style={{ transitionDelay: `${i * 0.08}s` }}
+            >
+              <div
+                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} border border-yellow-400/20 flex items-center justify-center text-yellow-400 feature-icon`}
+              >
+                {f.icon}
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-base mb-1.5">
+                  {f.title}
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {f.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -627,7 +762,8 @@ function Chatbot() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
-            Asistente de <span className="gold-text">Comercio Exterior</span>
+            Asistente de{" "}
+            <span className="gold-text-animated">Comercio Exterior</span>
           </h2>
           <p className="text-slate-400">
             Powered by Claude · Anthropic — Especializado en operaciones
@@ -799,14 +935,84 @@ const INITIAL_FORM = {
   alto: "",
 };
 
+// ── Currency helpers ──────────────────────────────────────────────────────────
+
+const CURRENCY_CACHE_KEY = "conexporta_rates";
+const CURRENCY_CACHE_TTL = 3600000; // 1 hora en ms
+const CURRENCY_SYMBOLS = { USD: "USD", ARS: "$", EUR: "€", BRL: "R$" };
+const CURRENCY_LOCALES = {
+  USD: "en-US",
+  ARS: "es-AR",
+  EUR: "de-DE",
+  BRL: "pt-BR",
+};
+
+async function getRates() {
+  try {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(CURRENCY_CACHE_KEY);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CURRENCY_CACHE_TTL)
+          return { data, timestamp };
+      }
+    }
+    const res = await fetch("/api/currency");
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    const ts = json.updatedAt ?? Date.now();
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        CURRENCY_CACHE_KEY,
+        JSON.stringify({ timestamp: ts, data: json }),
+      );
+    }
+    return { data: json, timestamp: ts };
+  } catch {
+    return null;
+  }
+}
+
 function Calculadora() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rates, setRates] = useState(null);
+  const [ratesError, setRatesError] = useState(false);
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState(null);
+  const [displayCurrency, setDisplayCurrency] = useState("USD");
+
+  useEffect(() => {
+    getRates().then((res) => {
+      if (!res) {
+        setRatesError(true);
+        return;
+      }
+      setRates(res.data);
+      setRatesUpdatedAt(res.timestamp);
+    });
+  }, []);
 
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function convertAmt(usdAmt) {
+    if (!rates || displayCurrency === "USD" || !rates[displayCurrency])
+      return usdAmt;
+    return usdAmt * rates[displayCurrency];
+  }
+
+  function fmtAmt(usdAmt) {
+    const val = convertAmt(usdAmt);
+    const locale = CURRENCY_LOCALES[displayCurrency] ?? "en-US";
+    return `${CURRENCY_SYMBOLS[displayCurrency]} ${val.toLocaleString(locale, { maximumFractionDigits: 0 })}`;
+  }
+
+  function minutesSince(ts) {
+    if (!ts) return null;
+    return Math.floor((Date.now() - ts) / 60000);
   }
 
   // Calcula el peso volumétrico según el tipo de transporte
@@ -920,7 +1126,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 fade-in-up">
-            Calculadora de <span className="gold-text">Envíos</span>
+            Calculadora de <span className="gold-text-animated">Envíos</span>
           </h2>
           <p className="text-slate-400">
             Estimaciones orientativas de flete, seguro y tiempos de tránsito —
@@ -1120,28 +1326,104 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
 
             {result && (
               <>
-                <h3 className="text-white font-semibold text-lg">
-                  Estimación de costos
-                </h3>
+                {/* Header + toggle de moneda */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-white font-semibold text-lg">
+                    Estimación de costos
+                  </h3>
+                  <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+                    {["USD", "ARS", "EUR", "BRL"].map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setDisplayCurrency(c)}
+                        disabled={c !== "USD" && (!rates || !rates[c])}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
+                          displayCurrency === c
+                            ? "bg-yellow-400"
+                            : "text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                        }`}
+                        style={
+                          displayCurrency === c ? { color: "#0a1628" } : {}
+                        }
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {ratesError && (
+                  <div className="flex items-center gap-2 text-amber-400 text-xs bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
+                    <AlertTriangle size={13} className="flex-shrink-0" />
+                    Tipo de cambio no disponible — mostrando valores en USD
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Flete */}
                   <div className="bg-white/5 rounded-xl p-4">
                     <div className="text-slate-400 text-xs mb-1">
                       Flete estimado
                     </div>
                     <div className="text-yellow-400 font-bold text-lg">
-                      {result.moneda} {result.flete_min?.toLocaleString()} –{" "}
-                      {result.flete_max?.toLocaleString()}
+                      {fmtAmt(result.flete_min ?? 0)} –{" "}
+                      {fmtAmt(result.flete_max ?? 0)}
                     </div>
+                    {displayCurrency !== "USD" && (
+                      <div className="text-slate-500 text-xs mt-0.5">
+                        USD {result.flete_min?.toLocaleString()} –{" "}
+                        {result.flete_max?.toLocaleString()}
+                      </div>
+                    )}
+                    {displayCurrency === "USD" && rates?.ARS && (
+                      <div className="text-slate-500 text-xs mt-0.5">
+                        ${" "}
+                        {(result.flete_min * rates.ARS).toLocaleString(
+                          "es-AR",
+                          { maximumFractionDigits: 0 },
+                        )}{" "}
+                        –{" "}
+                        {(result.flete_max * rates.ARS).toLocaleString(
+                          "es-AR",
+                          { maximumFractionDigits: 0 },
+                        )}{" "}
+                        ARS
+                      </div>
+                    )}
                   </div>
+
+                  {/* Seguro */}
                   <div className="bg-white/5 rounded-xl p-4">
                     <div className="text-slate-400 text-xs mb-1">
                       Seguro de carga
                     </div>
                     <div className="text-yellow-400 font-bold text-lg">
-                      {result.moneda} {result.seguro_min} – {result.seguro_max}
+                      {fmtAmt(result.seguro_min ?? 0)} –{" "}
+                      {fmtAmt(result.seguro_max ?? 0)}
                     </div>
+                    {displayCurrency !== "USD" && (
+                      <div className="text-slate-500 text-xs mt-0.5">
+                        USD {result.seguro_min} – {result.seguro_max}
+                      </div>
+                    )}
+                    {displayCurrency === "USD" && rates?.ARS && (
+                      <div className="text-slate-500 text-xs mt-0.5">
+                        ${" "}
+                        {(result.seguro_min * rates.ARS).toLocaleString(
+                          "es-AR",
+                          { maximumFractionDigits: 0 },
+                        )}{" "}
+                        –{" "}
+                        {(result.seguro_max * rates.ARS).toLocaleString(
+                          "es-AR",
+                          { maximumFractionDigits: 0 },
+                        )}{" "}
+                        ARS
+                      </div>
+                    )}
                   </div>
+
+                  {/* Tránsito */}
                   <div className="bg-white/5 rounded-xl p-4">
                     <div className="text-slate-400 text-xs mb-1">
                       Tiempo de tránsito
@@ -1150,6 +1432,8 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                       {result.tiempo_dias_min} – {result.tiempo_dias_max} días
                     </div>
                   </div>
+
+                  {/* Incoterm */}
                   <div className="bg-white/5 rounded-xl p-4">
                     <div className="text-slate-400 text-xs mb-1">
                       Incoterm recomendado
@@ -1158,21 +1442,64 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                       {result.incoterm_recomendado}
                     </div>
                   </div>
-                  {/* Card Total estimado */}
+
+                  {/* Total estimado */}
                   <div className="col-span-2 bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4">
                     <div className="text-yellow-400 text-xs font-medium mb-1">
                       Total estimado (flete + seguro)
                     </div>
                     <div className="text-yellow-300 font-bold text-xl">
-                      {result.moneda}{" "}
-                      {(
-                        (result.flete_min ?? 0) + (result.seguro_min ?? 0)
-                      ).toLocaleString()}{" "}
+                      {fmtAmt(
+                        (result.flete_min ?? 0) + (result.seguro_min ?? 0),
+                      )}{" "}
                       –{" "}
-                      {(
-                        (result.flete_max ?? 0) + (result.seguro_max ?? 0)
-                      ).toLocaleString()}
+                      {fmtAmt(
+                        (result.flete_max ?? 0) + (result.seguro_max ?? 0),
+                      )}
                     </div>
+                    {displayCurrency !== "USD" && (
+                      <div className="text-slate-500 text-xs mt-0.5">
+                        USD{" "}
+                        {(
+                          (result.flete_min ?? 0) + (result.seguro_min ?? 0)
+                        ).toLocaleString()}{" "}
+                        –{" "}
+                        {(
+                          (result.flete_max ?? 0) + (result.seguro_max ?? 0)
+                        ).toLocaleString()}
+                      </div>
+                    )}
+                    {displayCurrency === "USD" && rates?.ARS && (
+                      <div className="text-yellow-400/70 text-sm mt-1.5 font-medium">
+                        ${" "}
+                        {(
+                          ((result.flete_min ?? 0) + (result.seguro_min ?? 0)) *
+                          rates.ARS
+                        ).toLocaleString("es-AR", {
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        –{" "}
+                        {(
+                          ((result.flete_max ?? 0) + (result.seguro_max ?? 0)) *
+                          rates.ARS
+                        ).toLocaleString("es-AR", {
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ARS
+                      </div>
+                    )}
+                    {rates?.ARS && (
+                      <div className="text-slate-500 text-xs mt-2 leading-relaxed">
+                        Tipo de cambio: 1 USD ={" "}
+                        {rates.ARS.toLocaleString("es-AR", {
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ARS
+                        {ratesUpdatedAt !== null &&
+                          ` · actualizado hace ${minutesSince(ratesUpdatedAt)} min`}
+                        {" · "}Fuente: CurrencyAPI
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1349,8 +1676,12 @@ function GestionFirmas() {
               value: stats.pendientes,
               color: "text-yellow-400",
             },
-          ].map((s) => (
-            <div key={s.label} className="glass-card p-5 text-center">
+          ].map((s, i) => (
+            <div
+              key={s.label}
+              className="glass-card p-5 text-center fade-in-scale"
+              style={{ transitionDelay: `${i * 0.1}s` }}
+            >
               <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
               <div className="text-slate-400 text-sm mt-1">{s.label}</div>
             </div>
@@ -1584,10 +1915,10 @@ function Contacto() {
           ].map((c, i) => (
             <div
               key={c.title}
-              className="glass-card p-6 flex flex-col items-center gap-3 fade-in-up"
-              style={{ transitionDelay: `${i * 0.1}s` }}
+              className="glass-card p-6 flex flex-col items-center gap-3 fade-in-scale"
+              style={{ transitionDelay: `${i * 0.12}s` }}
             >
-              <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400">
+              <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
                 {c.icon}
               </div>
               <div className="font-semibold text-white">{c.title}</div>
@@ -1676,12 +2007,16 @@ function ComoFunciona() {
               {/* Card */}
               <div
                 className="glass-card p-6 flex flex-col items-center text-center gap-4 flex-1 fade-in-up"
-                style={{ transitionDelay: `${index * 0.12}s` }}
+                style={{ transitionDelay: `${index * 0.18}s` }}
               >
-                <div className="text-4xl font-extrabold gold-text leading-none">
-                  {paso.numero}
+                {/* Step number with ring */}
+                <div className="relative flex items-center justify-center w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border border-yellow-400/25 spin-slow" />
+                  <div className="text-3xl font-extrabold gold-text-animated leading-none z-10">
+                    {paso.numero}
+                  </div>
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400">
+                <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 feature-icon">
                   {paso.icono}
                 </div>
                 <div>
@@ -1694,10 +2029,11 @@ function ComoFunciona() {
                 </div>
               </div>
 
-              {/* Arrow between cards (desktop only, not after last) */}
+              {/* Animated connector (desktop only, not after last) */}
               {index < pasos.length - 1 && (
-                <div className="hidden md:flex items-center justify-center text-yellow-400/40 text-2xl font-light px-2 self-center">
-                  →
+                <div className="hidden md:flex flex-col items-center justify-center px-2 self-center gap-1">
+                  <div className="w-8 step-line" />
+                  <div className="text-yellow-400/50 text-lg">›</div>
                 </div>
               )}
             </div>
@@ -1715,10 +2051,13 @@ export default function Home() {
   useScrollReveal();
   return (
     <>
+      <ScrollProgressBar />
       <Navbar />
       <main>
         <Hero />
         <FeaturesBar />
+        <hr className="section-divider" />
+        <PorQueConExporta />
         <hr className="section-divider" />
         <ComoFunciona />
         <hr className="section-divider" />

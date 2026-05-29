@@ -17,7 +17,9 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html:
               "if('scrollRestoration'in history){history.scrollRestoration='manual';}" +
-              "window.scrollTo(0,0);",
+              "window.scrollTo(0,0);" +
+              "document.addEventListener('DOMContentLoaded',function(){window.scrollTo({top:0,left:0,behavior:'instant'});});" +
+              "window.addEventListener('load',function(){window.scrollTo({top:0,left:0,behavior:'instant'});});",
           }}
         />
       </head>
