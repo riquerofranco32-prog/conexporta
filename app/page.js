@@ -22,6 +22,10 @@ import {
   MapPin,
   Info,
   AlertTriangle,
+  Tag,
+  Copy,
+  CheckCheck,
+  ChevronRight,
 } from "lucide-react";
 
 // ─── Utility Hooks ───────────────────────────────────────────────────────────
@@ -262,28 +266,50 @@ function Navbar() {
             </a>
           </div>
 
-          {/* Mobile toggle */}
+          {/* Mobile hamburger */}
           <button
-            className="md:hidden text-white"
+            className="md:hidden p-2 flex flex-col gap-[5px] items-center justify-center"
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
           >
-            {menuOpen ? <X size={24} /> : <MessageCircle size={24} />}
+            <span
+              className={`hamburger-bar ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`}
+            />
+            <span
+              className={`hamburger-bar transition-opacity duration-200 ${menuOpen ? "opacity-0" : ""}`}
+            />
+            <span
+              className={`hamburger-bar ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`}
+            />
           </button>
         </div>
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden pb-4 flex flex-col gap-3 mobile-menu-enter">
+          <div className="md:hidden mobile-menu-enter border-t border-white/10">
             {links.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                className="text-slate-300 hover:text-yellow-400 text-sm font-medium py-2 border-b border-white/10"
+                className={`flex items-center w-full px-4 py-4 text-sm font-medium border-b border-white/8 transition-colors ${
+                  activeSection === l.href.replace("#", "")
+                    ? "text-yellow-400"
+                    : "text-slate-300 hover:text-yellow-400"
+                }`}
               >
                 {l.label}
               </a>
             ))}
+            <div className="px-4 py-3">
+              <a
+                href="#chatbot"
+                onClick={() => setMenuOpen(false)}
+                className="btn-gold w-full py-3 rounded-xl text-sm flex items-center justify-center"
+              >
+                Consultar ahora
+              </a>
+            </div>
           </div>
         )}
       </div>
@@ -514,8 +540,8 @@ function Hero() {
             </div>
           </div>
 
-          {/* Right: Chat preview */}
-          <div className="hidden lg:block">
+          {/* Right: Chat preview — shown below on mobile, right column on desktop */}
+          <div className="mt-10 lg:mt-0 max-w-sm mx-auto lg:max-w-none lg:mx-0">
             <ChatPreview />
           </div>
         </div>
@@ -858,7 +884,7 @@ function Chatbot() {
                   className={`chat-bubble flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       isUser
                         ? "bg-yellow-400 font-medium whitespace-pre-wrap"
                         : "bg-white/10 text-slate-100 flex flex-col gap-0.5"
@@ -923,6 +949,16 @@ function Chatbot() {
                     e.preventDefault();
                     sendMessage();
                   }
+                }}
+                onFocus={(e) => {
+                  setTimeout(
+                    () =>
+                      e.target.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      }),
+                    300,
+                  );
                 }}
                 placeholder="Escribí tu consulta de comercio exterior..."
                 rows={2}
@@ -1022,6 +1058,14 @@ function Calculadora() {
   const [ratesUpdatedAt, setRatesUpdatedAt] = useState(null);
   const [displayCurrency, setDisplayCurrency] = useState("USD");
 
+  // NCM classifier state
+  const [ncmQuery, setNcmQuery] = useState("");
+  const [ncmResult, setNcmResult] = useState(null);
+  const [ncmLoading, setNcmLoading] = useState(false);
+  const [ncmError, setNcmError] = useState("");
+  const [ncmCopied, setNcmCopied] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
   useEffect(() => {
     getRates().then((res) => {
       if (!res) {
@@ -1052,6 +1096,439 @@ function Calculadora() {
   function minutesSince(ts) {
     if (!ts) return null;
     return Math.floor((Date.now() - ts) / 60000);
+  }
+
+  async function clasificarNCM() {
+    if (!ncmQuery.trim()) return;
+    setNcmError("");
+    setNcmResult(null);
+    setNcmLoading(true);
+    try {
+      const res = await fetch("/api/clasificar-ncm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descripcion: ncmQuery }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setNcmResult(data);
+    } catch (err) {
+      setNcmError(
+        err.message || "No se pudo clasificar el producto. Intentá de nuevo.",
+      );
+    } finally {
+      setNcmLoading(false);
+    }
+  }
+
+  function usarNCM() {
+    if (!ncmResult) return;
+    setField("producto", ncmResult.descripcion_oficial);
+    document
+      .getElementById("calculadora-form")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function generarPDF() {
+    if (!result) return;
+    setPdfLoading(true);
+    try {
+      // Fetch AI recommendations (non-blocking — PDF generates even if this fails)
+      let recom = null;
+      try {
+        const recomRes = await fetch("/api/pdf-recomendaciones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            producto: form.producto,
+            ncm: ncmResult?.codigo_ncm || null,
+            origen: form.origen,
+            destino: form.destino,
+            transporte: form.tipo,
+            peso: form.peso,
+          }),
+        });
+        recom = await recomRes.json();
+      } catch {
+        /* generate without recommendations */
+      }
+
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const MX = 20;
+      const PW = 210;
+      const CW = PW - 2 * MX;
+      const COL = CW / 2;
+      let y = 20;
+
+      const sf = (r, g, b) => doc.setFillColor(r, g, b);
+      const st = (r, g, b) => doc.setTextColor(r, g, b);
+      const sd = (r, g, b) => doc.setDrawColor(r, g, b);
+
+      const checkBreak = (needed) => {
+        if (y + needed > 277) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      const sectionTitle = (title) => {
+        checkBreak(14);
+        st(29, 78, 216);
+        doc.setFontSize(10.5);
+        doc.setFont("helvetica", "bold");
+        doc.text(title, MX, y);
+        sd(29, 78, 216);
+        doc.setLineWidth(0.4);
+        doc.line(MX, y + 2, PW - MX, y + 2);
+        sd(226, 232, 240);
+        doc.setLineWidth(0.1);
+        y += 8;
+      };
+
+      const tableRow = (label, value) => {
+        checkBreak(8);
+        const rh = 7;
+        sf(248, 250, 252);
+        doc.rect(MX, y, COL, rh, "F");
+        sf(255, 255, 255);
+        doc.rect(MX + COL, y, COL, rh, "F");
+        sd(226, 232, 240);
+        doc.setLineWidth(0.1);
+        doc.rect(MX, y, CW, rh, "S");
+        st(100, 116, 139);
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "bold");
+        doc.text(String(label), MX + 3, y + 4.8);
+        st(30, 41, 59);
+        doc.setFont("helvetica", "normal");
+        const lines = doc.splitTextToSize(String(value ?? "-"), COL - 6);
+        doc.text(lines[0] ?? "", MX + COL + 3, y + 4.8);
+        y += rh;
+      };
+
+      // ── Header ──
+      sf(29, 78, 216);
+      doc.rect(MX, y, CW, 28, "F");
+      sf(245, 200, 66);
+      doc.rect(MX + 4, y + 4, 20, 20, "F");
+      st(10, 22, 40);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("CE", MX + 14, y + 16.5, { align: "center" });
+      st(255, 255, 255);
+      doc.setFontSize(15);
+      doc.setFont("helvetica", "bold");
+      doc.text("ConExporta AI", MX + 30, y + 11);
+      doc.setFontSize(9.5);
+      doc.setFont("helvetica", "normal");
+      doc.text("Cotizacion de Comercio Exterior", MX + 30, y + 18);
+      doc.setFontSize(7.5);
+      doc.text("UTN San Rafael - Mendoza, Argentina", MX + 30, y + 24);
+      y += 32;
+
+      const cotNum = `COT-${Date.now().toString().slice(-8)}`;
+      const now = new Date();
+      const fechaStr = now.toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      const horaStr = now.toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      sf(241, 245, 249);
+      doc.rect(MX, y, CW, 12, "F");
+      st(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(`N de cotizacion: ${cotNum}`, MX + 4, y + 4.5);
+      doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr} hs`, MX + 4, y + 9.5);
+      y += 16;
+
+      // ── Section 1: Ficha del Envio ──
+      sectionTitle("SECCION 1 - FICHA DEL ENVIO");
+      const modoLabel =
+        form.tipo === "aereo"
+          ? "Aereo"
+          : form.tipo === "terrestre"
+            ? "Terrestre"
+            : "Maritimo";
+      tableRow("Origen", form.origen);
+      tableRow("Destino", form.destino);
+      tableRow("Modo de transporte", modoLabel);
+      tableRow("Producto", form.producto);
+      tableRow("Peso total", `${form.peso} kg`);
+      if (form.largo && form.ancho && form.alto) {
+        tableRow(
+          "Dimensiones",
+          `${form.largo} x ${form.ancho} x ${form.alto} cm`,
+        );
+        const volM3 = (
+          (Number(form.largo) * Number(form.ancho) * Number(form.alto)) /
+          1000000
+        ).toFixed(3);
+        tableRow("Volumen estimado", `${volM3} m3`);
+      }
+      y += 5;
+
+      // ── Section 2: NCM (conditional) ──
+      if (ncmResult) {
+        checkBreak(60);
+        sectionTitle("SECCION 2 - POSICION ARANCELARIA NCM/HS");
+        tableRow("Codigo NCM", ncmResult.codigo_ncm);
+        tableRow("Codigo HS (6 digitos)", ncmResult.codigo_hs6);
+        tableRow("Descripcion oficial", ncmResult.descripcion_oficial);
+        tableRow("Seccion arancelaria", ncmResult.seccion);
+        tableRow("Capitulo", ncmResult.capitulo);
+        tableRow(
+          "Nivel de confianza",
+          ncmResult.confianza
+            ? ncmResult.confianza.charAt(0).toUpperCase() +
+                ncmResult.confianza.slice(1)
+            : "-",
+        );
+        st(148, 163, 184);
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", "italic");
+        doc.text(
+          "* Clasificacion orientativa. Verificar con despachante de aduana oficial.",
+          MX,
+          y + 5,
+        );
+        y += 11;
+      }
+
+      // ── Section 3: Costos ──
+      checkBreak(55);
+      sectionTitle("SECCION 3 - DESGLOSE DE COSTOS ESTIMADOS");
+      sf(29, 78, 216);
+      doc.rect(MX, y, CW, 7, "F");
+      st(255, 255, 255);
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "bold");
+      doc.text("Concepto", MX + 3, y + 5);
+      doc.text("Estimado (USD)", MX + CW - 44, y + 5);
+      y += 7;
+      tableRow(
+        "Flete internacional",
+        `USD ${result.flete_min?.toLocaleString() ?? 0} - ${result.flete_max?.toLocaleString() ?? 0}`,
+      );
+      tableRow(
+        "Seguro de carga",
+        `USD ${result.seguro_min?.toLocaleString() ?? 0} - ${result.seguro_max?.toLocaleString() ?? 0}`,
+      );
+
+      const totalMid = Math.round(
+        ((result.flete_min ?? 0) +
+          (result.flete_max ?? 0) +
+          (result.seguro_min ?? 0) +
+          (result.seguro_max ?? 0)) /
+          2,
+      );
+      checkBreak(10);
+      sf(254, 243, 199);
+      doc.rect(MX, y, CW, 8, "F");
+      sd(217, 119, 6);
+      doc.setLineWidth(0.4);
+      doc.rect(MX, y, CW, 8, "S");
+      doc.setLineWidth(0.1);
+      st(146, 64, 14);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL ESTIMADO", MX + 3, y + 5.5);
+      doc.text(`USD ${totalMid.toLocaleString()}`, MX + CW - 44, y + 5.5);
+      y += 8;
+
+      if (rates?.ARS) {
+        st(100, 116, 139);
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", "italic");
+        doc.text(
+          `Aprox. $ ${Math.round(totalMid * rates.ARS).toLocaleString("es-AR")} ARS (TC: 1 USD = ${Math.round(rates.ARS).toLocaleString("es-AR")} ARS)`,
+          MX,
+          y + 5,
+        );
+        y += 10;
+      } else {
+        y += 4;
+      }
+
+      // ── Section 4: Tiempos ──
+      checkBreak(45);
+      sectionTitle("SECCION 4 - TIEMPOS Y LOGISTICA");
+      tableRow(
+        "Tiempo de transito estimado",
+        `${result.tiempo_dias_min ?? "-"} - ${result.tiempo_dias_max ?? "-"} dias`,
+      );
+      tableRow("Incoterm sugerido", result.incoterm_recomendado || "-");
+      if (result.documentos_clave?.length) {
+        tableRow("Documentacion clave", result.documentos_clave.join(", "));
+      }
+      if (result.notas) {
+        y += 4;
+        checkBreak(22);
+        const notaLines = doc.splitTextToSize(`Nota: ${result.notas}`, CW - 8);
+        const notaH = Math.max(12, notaLines.length * 5 + 6);
+        sf(239, 246, 255);
+        doc.rect(MX, y, CW, notaH, "F");
+        st(29, 78, 216);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(notaLines, MX + 4, y + 5);
+        y += notaH + 4;
+      }
+
+      // ── Page 2: Recommendations ──
+      doc.addPage();
+      y = 20;
+
+      sf(29, 78, 216);
+      doc.rect(MX, y, CW, 12, "F");
+      st(255, 255, 255);
+      doc.setFontSize(10.5);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        "SECCION 5 - RECOMENDACIONES DEL ESPECIALISTA IA",
+        MX + 4,
+        y + 8,
+      );
+      y += 16;
+
+      st(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.text(
+        "Analisis generado por Claude AI - ConExporta - UTN San Rafael",
+        MX,
+        y,
+      );
+      y += 10;
+
+      if (recom && !recom.error) {
+        const renderList = (title, items) => {
+          if (!items?.length) return;
+          checkBreak(10 + items.length * 6);
+          st(29, 78, 216);
+          doc.setFontSize(9.5);
+          doc.setFont("helvetica", "bold");
+          doc.text(title, MX, y);
+          y += 6;
+          st(30, 41, 59);
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "normal");
+          for (const item of items) {
+            checkBreak(7);
+            const lines = doc.splitTextToSize(`- ${item}`, CW - 8);
+            doc.text(lines, MX + 4, y);
+            y += lines.length * 5 + 1;
+          }
+          y += 5;
+        };
+
+        renderList("Documentacion Requerida", recom.documentacion_requerida);
+        renderList(
+          "Organismos Intervinientes",
+          recom.organismos_intervinientes,
+        );
+
+        if (recom.incoterm_recomendado) {
+          checkBreak(18);
+          st(29, 78, 216);
+          doc.setFontSize(9.5);
+          doc.setFont("helvetica", "bold");
+          doc.text("Incoterm Recomendado", MX, y);
+          y += 6;
+          st(30, 41, 59);
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "normal");
+          const incLines = doc.splitTextToSize(
+            recom.incoterm_recomendado,
+            CW - 4,
+          );
+          doc.text(incLines, MX + 4, y);
+          y += incLines.length * 5 + 6;
+        }
+
+        renderList("Riesgos a Considerar", recom.riesgos_a_considerar);
+        renderList(
+          "Recomendaciones Generales",
+          recom.recomendaciones_generales,
+        );
+
+        if (recom.tiempo_tramitacion_estimado) {
+          checkBreak(16);
+          st(29, 78, 216);
+          doc.setFontSize(9.5);
+          doc.setFont("helvetica", "bold");
+          doc.text("Tiempo de Tramitacion Estimado", MX, y);
+          y += 6;
+          st(30, 41, 59);
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "normal");
+          doc.text(recom.tiempo_tramitacion_estimado, MX + 4, y);
+          y += 10;
+        }
+      } else {
+        sf(254, 243, 199);
+        doc.rect(MX, y, CW, 14, "F");
+        st(146, 64, 14);
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          "Las recomendaciones IA no estuvieron disponibles al generar este documento.",
+          MX + 4,
+          y + 9,
+        );
+        y += 18;
+      }
+
+      // ── Footer on last page ──
+      const footY = 276;
+      sd(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(MX, footY, PW - MX, footY);
+      st(148, 163, 184);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "italic");
+      doc.text(
+        "Este documento es una estimacion orientativa generada por IA. No constituye asesoramiento legal ni oficial.",
+        MX,
+        footY + 5,
+      );
+      doc.text(
+        "Verificar siempre con un despachante de aduana habilitado y los organismos oficiales vigentes.",
+        MX,
+        footY + 10,
+      );
+      doc.text(`ConExporta AI - UTN San Rafael - ${fechaStr}`, MX, footY + 16);
+
+      // Page numbers on all pages
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        st(148, 163, 184);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Pagina ${p} de ${totalPages}`, PW - MX, 290, {
+          align: "right",
+        });
+      }
+
+      doc.save(`ConExporta-${cotNum}.pdf`);
+    } catch (err) {
+      console.error("[generarPDF]", err);
+      setError("No se pudo generar el PDF. Intentá de nuevo.");
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   // Calcula el peso volumétrico según el tipo de transporte
@@ -1099,6 +1576,7 @@ El usuario quiere calcular un envío con estos datos:
 - Destino: ${form.destino}
 - Peso real: ${form.peso} kg
 - Producto: ${form.producto}
+${ncmResult ? `- Código NCM: ${ncmResult.codigo_ncm}\n- Código HS: ${ncmResult.codigo_hs6}` : ""}
 ${form.largo ? `- Dimensiones: ${form.largo}x${form.ancho}x${form.alto} cm` : ""}
 ${notaVolumen}
 
@@ -1173,9 +1651,192 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
           </p>
         </div>
 
+        {/* ── Clasificador NCM ── */}
+        <div className="mb-8">
+          <div className="glass-card p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Tag size={16} className="text-yellow-400" />
+              <h3 className="text-white font-semibold text-base">
+                Clasificador de Posición Arancelaria
+              </h3>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">
+              Encontrá el código NCM/HS de tu producto — powered by Claude AI
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <textarea
+                rows={2}
+                value={ncmQuery}
+                onChange={(e) => setNcmQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    clasificarNCM();
+                  }
+                }}
+                placeholder="Describí tu producto: material, uso, características... Ej: zapatillas de cuero vacuno con suela de goma"
+                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-yellow-400/50 resize-none"
+              />
+              <button
+                type="button"
+                onClick={clasificarNCM}
+                disabled={ncmLoading || !ncmQuery.trim()}
+                className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 disabled:opacity-50 self-start sm:self-end"
+              >
+                <Search size={15} />
+                {ncmLoading ? "Clasificando..." : "Clasificar producto"}
+              </button>
+            </div>
+
+            {ncmLoading && (
+              <div className="mt-4 flex items-center gap-3 text-slate-400 text-sm">
+                <div className="flex gap-1">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+                Claude está analizando tu producto...
+              </div>
+            )}
+
+            {ncmError && (
+              <div className="mt-3 flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+                <AlertTriangle
+                  size={15}
+                  className="text-red-400 flex-shrink-0"
+                />
+                <p className="text-red-400 text-sm">{ncmError}</p>
+              </div>
+            )}
+
+            {ncmResult && (
+              <div className="mt-4 border border-white/10 rounded-xl p-5 bg-white/5">
+                <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Tag size={14} className="text-yellow-400" />
+                    <span className="text-white font-semibold text-sm">
+                      Posición Arancelaria Sugerida
+                    </span>
+                  </div>
+                  {ncmResult.validado_hs && (
+                    <span className="text-xs text-green-400 flex items-center gap-1">
+                      <CheckCheck size={13} />
+                      Validado en base HS internacional
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-xs">NCM:</span>
+                    <span
+                      className="bg-yellow-400 text-xs font-bold px-2.5 py-1 rounded-md"
+                      style={{ color: "#0a1628" }}
+                    >
+                      {ncmResult.codigo_ncm}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-xs">HS:</span>
+                    <span className="bg-white/10 text-slate-300 text-xs font-mono px-2.5 py-1 rounded-md">
+                      {ncmResult.codigo_hs6}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-xs">Confianza:</span>
+                    <span
+                      className={`flex items-center gap-1 text-xs font-medium ${
+                        ncmResult.confianza === "alta"
+                          ? "text-green-400"
+                          : ncmResult.confianza === "media"
+                            ? "text-yellow-400"
+                            : "text-red-400"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          ncmResult.confianza === "alta"
+                            ? "bg-green-400"
+                            : ncmResult.confianza === "media"
+                              ? "bg-yellow-400"
+                              : "bg-red-400"
+                        }`}
+                      />
+                      {ncmResult.confianza?.charAt(0).toUpperCase() +
+                        ncmResult.confianza?.slice(1)}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-slate-200 text-sm font-medium mb-1">
+                  &ldquo;{ncmResult.descripcion_oficial}&rdquo;
+                </p>
+                <p className="text-slate-400 text-xs mb-3">
+                  {ncmResult.seccion} · {ncmResult.capitulo}
+                </p>
+
+                {ncmResult.notas && (
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2.5 mb-3">
+                    <p className="text-blue-300 text-xs font-medium mb-0.5">
+                      Notas del clasificador
+                    </p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      {ncmResult.notas}
+                    </p>
+                  </div>
+                )}
+
+                {ncmResult.alternativas?.length > 0 && (
+                  <p className="text-slate-500 text-xs mb-3">
+                    Códigos alternativos: {ncmResult.alternativas.join(" / ")}
+                  </p>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={usarNCM}
+                    className="btn-gold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5"
+                  >
+                    <ChevronRight size={13} />
+                    Usar este NCM en la calculadora
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(ncmResult.codigo_ncm);
+                      setNcmCopied(true);
+                      setTimeout(() => setNcmCopied(false), 2000);
+                    }}
+                    className="px-4 py-2 rounded-lg text-xs border border-white/20 text-slate-300 hover:border-yellow-400/40 flex items-center gap-1.5 transition-colors"
+                  >
+                    {ncmCopied ? (
+                      <CheckCheck size={13} className="text-green-400" />
+                    ) : (
+                      <Copy size={13} />
+                    )}
+                    {ncmCopied ? "¡Copiado!" : "Copiar código"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className="text-slate-500 text-xs mt-3 flex items-start gap-1.5">
+              <AlertTriangle
+                size={12}
+                className="mt-0.5 flex-shrink-0 text-amber-500"
+              />
+              Resultado orientativo. Verificá siempre con un despachante de
+              aduana oficial.
+            </p>
+          </div>
+        </div>
+
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Form */}
           <form
+            id="calculadora-form"
             onSubmit={calcular}
             className="glass-card p-6 flex flex-col gap-5"
           >
@@ -1274,7 +1935,7 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
               <label className="text-slate-300 text-sm font-medium mb-2 block">
                 Dimensiones embalaje (cm) — opcional
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {["largo", "ancho", "alto"].map((d) => (
                   <input
                     key={d}
@@ -1581,6 +2242,16 @@ Respondé SOLO con un JSON válido sin texto extra ni markdown, con esta estruct
                     valores exactos.
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={generarPDF}
+                  disabled={pdfLoading}
+                  className="btn-gold w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <FileText size={16} />
+                  {pdfLoading ? "Generando PDF..." : "Descargar cotización PDF"}
+                </button>
               </>
             )}
           </div>
@@ -1849,8 +2520,8 @@ function GestionFirmas() {
 
         {/* Table */}
         <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="table-mobile-wrapper overflow-x-auto">
+            <table className="table-mobile w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 text-left">
                   <th className="px-5 py-3 font-medium">Empresa</th>
@@ -1874,20 +2545,31 @@ function GestionFirmas() {
                     key={e.id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors"
                   >
-                    <td className="px-5 py-3">
+                    <td data-label="Empresa" className="px-5 py-3">
                       <div className="font-medium text-white">
                         {e.razonSocial}
                       </div>
                       <div className="text-slate-500 text-xs">{e.email}</div>
                     </td>
-                    <td className="px-5 py-3 text-slate-300 font-mono text-xs">
+                    <td
+                      data-label="CUIT"
+                      className="px-5 py-3 text-slate-300 font-mono text-xs"
+                    >
                       {e.cuit}
                     </td>
-                    <td className="px-5 py-3 text-slate-300">{e.contacto}</td>
-                    <td className="px-5 py-3 text-slate-400 text-xs">
+                    <td
+                      data-label="Contacto"
+                      className="px-5 py-3 text-slate-300"
+                    >
+                      {e.contacto}
+                    </td>
+                    <td
+                      data-label="Tipo"
+                      className="px-5 py-3 text-slate-400 text-xs"
+                    >
                       {e.tipo}
                     </td>
-                    <td className="px-5 py-3">
+                    <td data-label="Estado" className="px-5 py-3">
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${estadoColor[e.estado]}`}
                       >
@@ -1937,18 +2619,21 @@ function Contacto() {
               icon: <Phone size={24} />,
               title: "Teléfono",
               value: "+54 260 000-0000",
+              href: "tel:+542600000000",
               sub: "Lunes a viernes 9–18 hs",
             },
             {
               icon: <Mail size={24} />,
               title: "Email",
               value: "consultas@conexporta.edu.ar",
+              href: "mailto:consultas@conexporta.edu.ar",
               sub: "Respondemos en 24 hs hábiles",
             },
             {
               icon: <MapPin size={24} />,
               title: "Sede",
               value: "Facultad Regional San Rafael",
+              href: null,
               sub: "Mendoza, Argentina",
             },
           ].map((c, i) => (
@@ -1961,7 +2646,16 @@ function Contacto() {
                 {c.icon}
               </div>
               <div className="font-semibold text-white">{c.title}</div>
-              <div className="text-slate-300 text-sm">{c.value}</div>
+              {c.href ? (
+                <a
+                  href={c.href}
+                  className="text-slate-300 text-sm hover:text-yellow-400 transition-colors"
+                >
+                  {c.value}
+                </a>
+              ) : (
+                <div className="text-slate-300 text-sm">{c.value}</div>
+              )}
               <div className="text-slate-500 text-xs">{c.sub}</div>
             </div>
           ))}
