@@ -57,9 +57,17 @@ function useScrollSetup() {
 function useScrollReveal() {
   useEffect(() => {
     const selectors =
-      ".fade-in-up, .fade-in-left, .fade-in-right, .fade-in-scale, .step-line, .section-title-underline";
+      ".fade-in-up, .fade-in-left, .fade-in-right, .fade-in-scale, .step-line, .section-title-underline, .reveal";
     const elements = document.querySelectorAll(selectors);
     if (!elements.length) return;
+
+    // Stagger: asigna transition-delay a hijos .reveal dentro de grids
+    document.querySelectorAll(".reveal-grid").forEach((grid) => {
+      Array.from(grid.querySelectorAll(".reveal")).forEach((child, i) => {
+        child.style.transitionDelay = `${i * 0.1}s`;
+      });
+    });
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -99,38 +107,37 @@ function ScrollProgressBar() {
 }
 
 // Typewriter: rota entre palabras con cursor parpadeante
-function useTypewriter(words, speed = 80, pause = 1800) {
-  const [display, setDisplay] = useState(words[0]);
+function useTypewriter(words) {
+  const [display, setDisplay] = useState("");
+  const state = useRef({ wordIdx: 0, charIdx: 0, deleting: false });
 
   useEffect(() => {
-    let wordIdx = 0;
-    let charIdx = words[0].length;
-    let deleting = false;
     let timeout;
-
     function tick() {
-      const current = words[wordIdx];
-      if (!deleting) {
-        charIdx++;
-        if (charIdx > current.length) {
-          deleting = true;
-          timeout = setTimeout(tick, pause);
+      const s = state.current;
+      const current = words[s.wordIdx];
+      if (!s.deleting) {
+        s.charIdx++;
+        setDisplay(current.slice(0, s.charIdx));
+        if (s.charIdx >= current.length) {
+          s.deleting = true;
+          timeout = setTimeout(tick, 1800);
           return;
         }
+        timeout = setTimeout(tick, 90);
       } else {
-        charIdx--;
-        if (charIdx === 0) {
-          deleting = false;
-          wordIdx = (wordIdx + 1) % words.length;
+        s.charIdx--;
+        setDisplay(current.slice(0, s.charIdx));
+        if (s.charIdx <= 0) {
+          s.deleting = false;
+          s.wordIdx = (s.wordIdx + 1) % words.length;
           timeout = setTimeout(tick, 300);
           return;
         }
+        timeout = setTimeout(tick, 45);
       }
-      setDisplay(words[wordIdx].slice(0, charIdx));
-      timeout = setTimeout(tick, deleting ? speed / 2 : speed);
     }
-
-    timeout = setTimeout(tick, pause);
+    timeout = setTimeout(tick, 500);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -176,8 +183,8 @@ function Navbar() {
   const [activeSection, setActiveSection] = useState("");
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -289,8 +296,9 @@ function Navbar() {
 const ROTATE_WORDS = [
   "exportaciones",
   "importaciones",
-  "Incoterms",
-  "logística",
+  "Incoterms 2020",
+  "logística internacional",
+  "documentación aduanera",
 ];
 
 function StatCard({ value, label }) {
@@ -320,7 +328,10 @@ const PREVIEW_MSGS = [
 
 function ChatPreview() {
   return (
-    <div className="glass-card p-5 max-w-sm mx-auto lg:mx-0">
+    <div
+      className="glass-card chat-preview-card p-5 max-w-sm mx-auto lg:mx-0"
+      style={{ animation: "slideInRight 0.8s ease 0.3s both" }}
+    >
       <div className="flex items-center gap-3 pb-4 border-b border-white/10 mb-4">
         <div
           className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-xs flex-shrink-0"
@@ -342,15 +353,22 @@ function ChatPreview() {
           <div
             key={i}
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            style={{ animation: `fadeInUp 0.4s ease ${i * 0.25 + 0.2}s both` }}
+            style={{ animation: `fadeInUp 0.4s ease ${i * 0.25 + 0.5}s both` }}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
+              className={`max-w-[85%] px-3.5 py-2.5 text-xs leading-relaxed ${
                 m.role === "user"
                   ? "bg-yellow-400 font-medium"
                   : "bg-white/10 text-slate-200"
               }`}
-              style={m.role === "user" ? { color: "#0a1628" } : {}}
+              style={{
+                ...(m.role === "user"
+                  ? {
+                      color: "#0a1628",
+                      borderRadius: "18px 18px 4px 18px",
+                    }
+                  : { borderRadius: "18px 18px 18px 4px" }),
+              }}
             >
               {m.text.split("\n").map((line, j) => {
                 if (line.startsWith("- ")) {
@@ -380,7 +398,10 @@ function ChatPreview() {
           </div>
         ))}
         <div className="flex justify-start">
-          <div className="bg-white/10 rounded-2xl px-4 py-3 flex gap-1.5 items-center">
+          <div
+            className="bg-white/10 px-4 py-3 flex gap-1.5 items-center"
+            style={{ borderRadius: "18px 18px 18px 4px" }}
+          >
             <span className="typing-dot" />
             <span className="typing-dot" />
             <span className="typing-dot" />
@@ -427,28 +448,40 @@ function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left: text + CTAs */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 badge-pulse hero-badge">
+            <div
+              className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-6 hero-badge"
+              style={{ animation: "fadeInUp 0.4s ease 0s both" }}
+            >
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               <span className="text-yellow-400 text-sm font-medium">
-                ✦ Consultorio de Comercio Exterior · UTN Rosario
+                ✦ Consultorio de Comercio Exterior · UTN San Rafael
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight">
+            <h1
+              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight"
+              style={{ animation: "fadeInUp 0.6s ease 0.15s both" }}
+            >
               Tu consultor de{" "}
               <span className="gold-text-animated">comercio exterior</span>
               <br />
               disponible siempre
             </h1>
 
-            <p className="text-slate-300 text-lg mb-8 max-w-lg leading-relaxed mx-auto lg:mx-0">
+            <p
+              className="text-slate-300 text-lg mb-8 max-w-lg leading-relaxed mx-auto lg:mx-0"
+              style={{ animation: "fadeInUp 0.6s ease 0.3s both" }}
+            >
               Resolvé tus dudas sobre{" "}
               <span className="text-yellow-400 font-semibold">{twDisplay}</span>
               <span className="typewriter-cursor" /> desde Argentina — al
               instante.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-3">
+            <div
+              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-3"
+              style={{ animation: "fadeInUp 0.5s ease 0.45s both" }}
+            >
               <a
                 href="#chatbot"
                 className="btn-gold px-8 py-3 rounded-xl text-base"
@@ -463,12 +496,18 @@ function Hero() {
               </a>
             </div>
 
-            <p className="text-slate-500 text-sm mb-8 text-center lg:text-left">
+            <p
+              className="text-slate-500 text-sm mb-8 text-center lg:text-left"
+              style={{ animation: "fadeInUp 0.5s ease 0.45s both" }}
+            >
               +200 consultas respondidas · Documentación aduanera · Incoterms
               2020
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div
+              className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+              style={{ animation: "fadeInUp 0.5s ease 0.6s both" }}
+            >
               {stats.map((s) => (
                 <StatCard key={s.label} value={s.value} label={s.label} />
               ))}
@@ -1892,12 +1931,12 @@ function Contacto() {
           nuestros especialistas.
         </p>
 
-        <div className="grid sm:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-3 gap-6 reveal-grid">
           {[
             {
               icon: <Phone size={24} />,
               title: "Teléfono",
-              value: "+54 341 000-0000",
+              value: "+54 260 000-0000",
               sub: "Lunes a viernes 9–18 hs",
             },
             {
@@ -1909,13 +1948,13 @@ function Contacto() {
             {
               icon: <MapPin size={24} />,
               title: "Sede",
-              value: "Facultad de Ciencias Económicas",
-              sub: "Rosario, Santa Fe, Argentina",
+              value: "Facultad Regional San Rafael",
+              sub: "Mendoza, Argentina",
             },
           ].map((c, i) => (
             <div
               key={c.title}
-              className="glass-card p-6 flex flex-col items-center gap-3 fade-in-scale"
+              className="glass-card p-6 flex flex-col items-center gap-3 reveal"
               style={{ transitionDelay: `${i * 0.12}s` }}
             >
               <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 contact-icon-wrap">
@@ -1935,28 +1974,82 @@ function Contacto() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 function Footer() {
+  const navLinks = [
+    { label: "Asistente IA", href: "#chatbot" },
+    { label: "Cómo funciona", href: "#como-funciona" },
+    { label: "Calculadora", href: "#calculadora" },
+    { label: "Gestión", href: "#gestion" },
+    { label: "Contacto", href: "#contacto" },
+  ];
+
   return (
-    <footer className="py-8 px-4 border-t border-white/10 text-center">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div
-            className="w-6 h-6 rounded bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-xs"
-            style={{ color: "#0a1628" }}
-          >
-            CE
+    <footer
+      className="px-4 pt-10 pb-6"
+      style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div className="max-w-6xl mx-auto">
+        <div className="footer-grid mb-8">
+          {/* Logo + tagline */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center font-bold text-sm flex-shrink-0"
+                style={{ color: "#0a1628" }}
+              >
+                CE
+              </div>
+              <span className="font-bold text-white text-base tracking-tight">
+                ConExporta <span className="gold-text">AI</span>
+              </span>
+            </div>
+            <p className="text-slate-500 text-xs leading-relaxed max-w-[220px]">
+              Asistente de comercio exterior para PyMEs y exportadores
+              argentinos, potenciado por Claude AI.
+            </p>
           </div>
-          <span className="text-white font-semibold text-sm">
-            ConExporta <span className="gold-text">AI</span>
-          </span>
+
+          {/* Navigation */}
+          <div className="flex flex-col gap-2 items-center">
+            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
+              Navegación
+            </p>
+            {navLinks.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-slate-500 hover:text-yellow-400 text-xs transition-colors"
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
+
+          {/* Contact */}
+          <div className="text-right">
+            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              Contacto
+            </p>
+            <p className="text-slate-500 text-xs mb-1">
+              consultas@conexporta.edu.ar
+            </p>
+            <p className="text-slate-500 text-xs mb-1">+54 260 000-0000</p>
+            <p className="text-slate-500 text-xs">
+              Facultad Regional San Rafael
+              <br />
+              Mendoza, Argentina
+            </p>
+          </div>
         </div>
-        <p className="text-slate-500 text-xs mb-2">
-          Consultorio de Comercio Exterior Universitario · Potenciado por Claude
-          · Google · Deployado en Vercel
-        </p>
-        <p className="text-slate-600 text-xs">
-          © 2025 ConExporta — Las estimaciones son orientativas y no constituyen
-          asesoramiento profesional.
-        </p>
+
+        <div
+          className="text-center pt-5"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          <p className="text-slate-600 text-xs">
+            © 2025 ConExporta · UTN San Rafael · Las estimaciones son
+            orientativas y no constituyen asesoramiento profesional.
+          </p>
+        </div>
       </div>
     </footer>
   );
